@@ -1,0 +1,43 @@
+# --- Secrets ---
+# Ignore the file containing secret keys and tokens
+.env
+
+# --- Databases ---
+# Ignore SQLite database files
+*.sqlite3
+db.sqlite3
+seeDBot.sqlite
+
+# --- Environment ---
+# Ignore the virtual environment folder
+.venv/
+venv/
+env/
+.env/
+
+# --- Django ---
+# Ignore log files
+*.log
+# Ignore collected static files (for production)
+staticfiles/
+# Ignore user-uploaded media files
+media/
+
+# --- Python ---
+# Ignore compiled Python files
+*.pyc
+# Ignore Python cache folders
+__pycache__/
+
+# --- OS & Editor Specific ---
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/

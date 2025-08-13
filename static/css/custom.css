@@ -1,0 +1,32 @@
+:root {
+  --pico-font-size: 15px;
+  --pico-spacing: 0.75rem;
+}
+
+main .card-grid article {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+button, [role="button"] {
+  font-weight: 600;
+}
+
+.btn-blue {
+  --pico-background-color: var(--pico-primary);
+  --pico-border-color: var(--pico-primary);
+  --pico-color: var(--pico-primary-inverse);
+}
+
+.btn-orange {
+  --pico-background-color: #f57c00;
+  --pico-border-color: #f57c00;
+  --pico-color: #ffffff;
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  align-items: center;  
+  gap: var(--pico-spacing);  
+}

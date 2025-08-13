@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>All Available Presets</h1>
+
+<form method="get">
+    <input type="search" id="search" name="q" placeholder="Search presets..." value="{{ search_query }}">
+</form>
+
+<article>
+    <header>
+        <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
+        <br><small>By: {{ preset.creator_name }}</small>
+    </header>
+
+    <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
+
+    <details>
+        <summary>Flags</summary>
+        <p>
+            <small>
+                {% if preset.hidden %}
+                <em>Hidden</em>
+                {% else %}
+                {{ preset.flags }}
+                {% endif %}
+            </small>
+        </p>
+    </details>
+
+    <footer class="button-group">
+        <form method="post" action="{% url 'roll-seed' preset.pk %}" style="margin: 0;">
+            {% csrf_token %}
+            <button type="submit" class="btn-blue">Roll Seed</button>
+        </form>
+
+        {% if preset.creator_id == user_discord_id %}
+        <a href="{% url 'preset-edit' preset.pk %}" role="button" class="btn-orange">Edit</a>
+        {% endif %}
+    </footer>
+</article>
+{% endblock %}

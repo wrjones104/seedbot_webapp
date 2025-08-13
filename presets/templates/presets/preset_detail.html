@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Preset Detail: {{ preset.preset_name }}{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <h1>{{ preset.preset_name }}</h1>
+
+    <form method="post" action="{% url 'roll-seed' preset.pk %}">
+        {% csrf_token %}
+        <button type="submit">Roll a Seed!</button>
+    </form>
+
+    {% if is_owner %}
+    <div class="owner-controls">
+        <a href="{% url 'preset-edit' preset.pk %}">Edit</a>
+        <a href="{% url 'preset-delete' preset.pk %}">Delete</a>
+    </div>
+    <hr>
+    {% endif %}
+
+    {% if api_error %}
+    <div class="error-box">
+        <p><strong>Oops! Something went wrong.</strong></p>
+        <p>{{ api_error }}</p>
+    </div>
+    {% endif %}
+
+    {% if seed_url %}
+    <div class="seed-result">
+        <p><strong>Seed generated!</strong></p>
+        <p>URL: <a href="{{ seed_url }}" target="_blank">{{ seed_url }}</a></p>
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <dl>
+        <dt>Creator</dt>
+        <dd>{{ preset.creator_name }} (ID: {{ preset.creator_id }})</dd>
+
+        <dt>Description</dt>
+        <dd>{{ preset.description|default:"No description provided." }}</dd>
+
+        <dt>Flags</dt>
+        <dd>
+            {% if preset.hidden %}
+            <em>Flags are hidden for this preset.</em>
+            {% else %}
+            {{ preset.flags|default:"None" }}
+            {% endif %}
+        </dd>
+
+        <dt>Arguments</dt>
+        <dd>{{ preset.arguments|default:"None" }}</dd>
+
+        <dt>Generated</dt>
+        <dd>{{ preset.gen_count }} times</dd>
+    </dl>
+
+    <a href="{% url 'preset-list' %}">← Back to full list</a>
+    {% endblock %}

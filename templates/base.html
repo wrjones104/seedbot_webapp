@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SeedBot Presets{% endblock %}</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+</head>
+<body>
+    
+    <nav class="container">
+        <ul>
+            <li>
+                <a href="{% url 'preset-list' %}" class="secondary">
+                    <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 32px; vertical-align: middle; margin-right: 10px;">
+                    <strong>SeedBot Presets</strong>
+                </a>
+            </li>
+        </ul>
+        <ul>
+            <li><a href="{% url 'preset-list' %}">All Presets</a></li>
+            {% if user.is_authenticated %}
+                <li><a href="{% url 'my-presets' %}">My Presets</a></li>
+                <li><a href="{% url 'account_logout' %}" role="button">Logout</a></li>
+            {% else %}
+                <li><a href="{% url 'account_login' %}" role="button">Login</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <main class="container">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm Delete{% endblock %}
+
+{% block content %}
+    <h1>Are you sure?</h1>
+    <p>Are you sure you want to delete the preset "{{ preset.preset_name }}"?</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Yes, Delete</button>
+        <a href="{% url 'preset-detail' preset.pk %}">Cancel</a>
+    </form>
+{% endblock %}

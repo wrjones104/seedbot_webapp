@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}My Presets{% endblock %}
+
+{% block content %}
+    <h1>My Presets</h1>
+
+    <p><a href="{% url 'preset-create' %}">Create a New Preset</a></p>
+    <hr>
+
+    {% if presets %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Preset Name</th>
+                    <th>Description</th>
+                    <th>Flags</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for preset in presets %}
+                <tr>
+                    <td><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></td>
+                    <td>{{ preset.description }}</td>
+                    <td>
+                        {% if preset.hidden %}
+                            <em>Flags Hidden</em>
+                        {% else %}
+                            {{ preset.flags }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>You have not created any presets yet.</p>
+    {% endif %}
+{% endblock %}
