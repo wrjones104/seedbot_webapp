@@ -8,8 +8,25 @@ main .card-grid article {
   overflow-wrap: break-word;
 }
 
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--pico-spacing);
+}
+
 button, [role="button"] {
   font-weight: 600;
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--pico-spacing);
+}
+
+.button-group form {
+  margin: 0;
 }
 
 .btn-blue {
@@ -24,9 +41,56 @@ button, [role="button"] {
   --pico-color: #ffffff;
 }
 
-.button-group {
-  display: flex;
-  justify-content: center;
-  align-items: center;  
-  gap: var(--pico-spacing);  
+.btn-red {
+  --pico-background-color: #c62828;
+  --pico-border-color: #c62828;
+  --pico-color: #ffffff;
+}
+
+article dl dt {
+  font-weight: bold;
+}
+
+/* Utility Classes */
+.mb-1 {
+  margin-bottom: var(--pico-spacing);
+}
+
+/* Select2 Theming */
+.select2-container--default .select2-selection--multiple {
+  background-color: var(--pico-form-element-background-color);
+  border: var(--pico-form-element-border-width) solid var(--pico-form-element-border-color);
+  border-radius: var(--pico-border-radius);
+}
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+  border-color: var(--pico-primary-focus);
+  box-shadow: 0 0 0 var(--pico-outline-width) var(--pico-primary-focus);
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+  background-color: var(--pico-primary);
+  border-color: var(--pico-primary-focus);
+  color: var(--pico-primary-inverse);
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+  color: var(--pico-primary-inverse);
+  margin-right: 0.5rem;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+  color: var(--pico-primary-inverse);
+  opacity: 0.75;
+}
+.select2-dropdown {
+  background-color: var(--pico-card-background-color);
+  border: var(--pico-form-element-border-width) solid var(--pico-card-border-color);
+  border-radius: var(--pico-border-radius);
+}
+.select2-container--default .select2-search--dropdown .select2-search__field {
+  background-color: var(--pico-form-element-background-color);
+  border: var(--pico-form-element-border-width) solid var(--pico-form-element-border-color);
+  border-radius: var(--pico-border-radius);
+  color: var(--pico-color);
+}
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+  background-color: var(--pico-primary-focus);
+  color: var(--pico-primary-inverse);
 }

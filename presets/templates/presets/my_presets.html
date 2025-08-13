@@ -3,36 +3,49 @@
 {% block title %}My Presets{% endblock %}
 
 {% block content %}
-    <h1>My Presets</h1>
-
-    <p><a href="{% url 'preset-create' %}">Create a New Preset</a></p>
-    <hr>
+    <div class="grid mb-1">
+        <h1 style="margin-bottom: 0;">My Presets</h1>
+        <div style="text-align: right;">
+            <a href="{% url 'preset-create' %}" role="button">Create a New Preset</a>
+        </div>
+    </div>
 
     {% if presets %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Preset Name</th>
-                    <th>Description</th>
-                    <th>Flags</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for preset in presets %}
-                <tr>
-                    <td><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></td>
-                    <td>{{ preset.description }}</td>
-                    <td>
-                        {% if preset.hidden %}
-                            <em>Flags Hidden</em>
-                        {% else %}
-                            {{ preset.flags }}
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="card-grid">
+            {% for preset in presets %}
+                <article>
+                    <header>
+                        <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
+                    </header>
+                    
+                    <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
+                    
+                    <details>
+                        <summary>Flags</summary>
+                        <p>
+                            <small>
+                                {% if preset.hidden %}
+                                    <em>Hidden</em>
+                                {% else %}
+                                    {{ preset.flags }}
+                                {% endif %}
+                            </small>
+                        </p>
+                    </details>
+
+                    <footer class="button-group">
+                        <form method="post" action="{% url 'roll-seed' preset.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-blue">Roll Seed</button>
+                        </form>
+                        
+                        <form method="get" action="{% url 'preset-edit' preset.pk %}">
+                            <button type="submit" class="btn-orange">Edit</button>
+                        </form>
+                    </footer>
+                </article>
+            {% endfor %}
+        </div>
     {% else %}
         <p>You have not created any presets yet.</p>
     {% endif %}

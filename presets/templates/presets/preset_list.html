@@ -1,42 +1,59 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>All Available Presets</h1>
+    <div class="grid mb-1">
+        <h1 style="margin-bottom: 0;">All Available Presets</h1>
+        <div style="text-align: right;">
+            <a href="{% url 'preset-create' %}" role="button">Create a New Preset</a>
+        </div>
+    </div>
 
-<form method="get">
-    <input type="search" id="search" name="q" placeholder="Search presets..." value="{{ search_query }}">
-</form>
+    <form method="get">
+        <input 
+            type="search" 
+            id="search"
+            name="q" 
+            placeholder="Search presets..." 
+            value="{{ search_query }}"
+        >
+    </form>
 
-<article>
-    <header>
-        <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
-        <br><small>By: {{ preset.creator_name }}</small>
-    </header>
+    <div class="card-grid">
+        {% for preset in presets %}
+            <article>
+                <header>
+                    <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
+                    <br><small>By: {{ preset.creator_name }}</small>
+                </header>
+                
+                <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
+                
+                <details>
+                    <summary>Flags</summary>
+                    <p>
+                        <small>
+                            {% if preset.hidden %}
+                                <em>Hidden</em>
+                            {% else %}
+                                {{ preset.flags }}
+                            {% endif %}
+                        </small>
+                    </p>
+                </details>
 
-    <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
-
-    <details>
-        <summary>Flags</summary>
-        <p>
-            <small>
-                {% if preset.hidden %}
-                <em>Hidden</em>
-                {% else %}
-                {{ preset.flags }}
-                {% endif %}
-            </small>
-        </p>
-    </details>
-
-    <footer class="button-group">
-        <form method="post" action="{% url 'roll-seed' preset.pk %}" style="margin: 0;">
-            {% csrf_token %}
-            <button type="submit" class="btn-blue">Roll Seed</button>
-        </form>
-
-        {% if preset.creator_id == user_discord_id %}
-        <a href="{% url 'preset-edit' preset.pk %}" role="button" class="btn-orange">Edit</a>
-        {% endif %}
-    </footer>
-</article>
+                <footer class="button-group">
+                    <form method="post" action="{% url 'roll-seed' preset.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-blue">Roll Seed</button>
+                    </form>
+                    
+                    {% if preset.creator_id == user_discord_id %}
+                        <form method="get" action="{% url 'preset-edit' preset.pk %}">
+                            <button type="submit" class="btn-orange">Edit</button>
+                        </form>
+                    {% endif %}
+                </footer>
+            </article>
+        {% endfor %}
+    </div>
 {% endblock %}

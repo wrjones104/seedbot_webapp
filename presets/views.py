@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from allauth.socialaccount.models import SocialAccount
+from . import flag_processor
 
 from .models import Preset, UserPermission
 from .forms import PresetForm
@@ -26,7 +27,7 @@ def user_is_official(user_id):
 # --- Views ---
 
 def preset_list_view(request):
-    queryset = Preset.objects.exclude(preset_name='').order_by('preset_name')
+    queryset = Preset.objects.exclude(preset_name='').order_by('-gen_count', 'preset_name')
     query = request.GET.get('q')
     if query:
         queryset = queryset.filter(
@@ -77,9 +78,13 @@ def roll_seed_view(request, pk):
     if request.method == 'POST':
         api_url = "https://api.ff6worldscollide.com/api/seed"
         
+        original_flags = preset.flags
+        arguments = preset.arguments
+        final_flags = flag_processor.apply_args(original_flags, arguments)
+
         payload = {
             "key": settings.WC_API_KEY, 
-            "flags": preset.flags
+            "flags": final_flags
         }
         headers = {"Content-Type": "application/json"}
 
@@ -163,8 +168,10 @@ def preset_update_view(request, pk):
     if request.method == 'POST':
         form = PresetForm(request.POST, instance=preset, is_official=is_official)
         if form.is_valid():
-            form.save()
-            return redirect('my-presets')
+            # The form.save() method returns the saved object
+            saved_preset = form.save()
+            # Redirect to the detail page for the preset we just saved
+            return redirect('preset-detail', pk=saved_preset.pk)
     else:
         form = PresetForm(instance=preset, is_official=is_official)
 

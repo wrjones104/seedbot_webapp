@@ -1,62 +1,65 @@
 {% extends "base.html" %}
 
-{% block title %}Preset Detail: {{ preset.preset_name }}{% endblock %}
+{% block title %}{{ preset.preset_name }}{% endblock %}
 
 {% block content %}
-<div class="detail-container">
-    <h1>{{ preset.preset_name }}</h1>
+    <article>
+        <header>
+            <h2>{{ preset.preset_name }}</h2>
+            <p>Created by: {{ preset.creator_name }}</p>
+        </header>
 
-    <form method="post" action="{% url 'roll-seed' preset.pk %}">
-        {% csrf_token %}
-        <button type="submit">Roll a Seed!</button>
-    </form>
+        <dl>
+            <dt>Description</dt>
+            <dd>{{ preset.description|default:"No description provided." }}</dd>
 
-    {% if is_owner %}
-    <div class="owner-controls">
-        <a href="{% url 'preset-edit' preset.pk %}">Edit</a>
-        <a href="{% url 'preset-delete' preset.pk %}">Delete</a>
-    </div>
-    <hr>
-    {% endif %}
+            <dt>Flags</dt>
+            <dd>
+                {% if preset.hidden %}
+                    <em>Flags are hidden for this preset.</em>
+                {% else %}
+                    {{ preset.flags|default:"None" }}
+                {% endif %}
+            </dd>
 
-    {% if api_error %}
-    <div class="error-box">
-        <p><strong>Oops! Something went wrong.</strong></p>
-        <p>{{ api_error }}</p>
-    </div>
-    {% endif %}
+            <dt>Arguments</dt>
+            <dd>{{ preset.arguments|default:"None" }}</dd>
 
-    {% if seed_url %}
-    <div class="seed-result">
-        <p><strong>Seed generated!</strong></p>
-        <p>URL: <a href="{{ seed_url }}" target="_blank">{{ seed_url }}</a></p>
-    </div>
-    {% endif %}
+            <dt>Times Generated</dt>
+            <dd>{{ preset.gen_count }}</dd>
+        </dl>
 
-    <hr>
+        {% if api_error %}
+            <div class="error-box" style="text-align: center;">
+                <strong>Oops!</strong><br>
+                <small>{{ api_error }}</small>
+            </div>
+        {% endif %}
+        {% if seed_url %}
+            <div class="seed-result" style="text-align: center;">
+                <strong>Seed generated!</strong><br>
+                <a href="{{ seed_url }}" target="_blank">{{ seed_url }}</a>
+            </div>
+        {% endif %}
 
-    <dl>
-        <dt>Creator</dt>
-        <dd>{{ preset.creator_name }} (ID: {{ preset.creator_id }})</dd>
+        <footer>
+            <div class="button-group">
+                <form method="post" action="{% url 'roll-seed' preset.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-blue">Roll Seed</button>
+                </form>
+                
+                {% if is_owner %}
+                    <form method="get" action="{% url 'preset-edit' preset.pk %}">
+                        <button type="submit" class="btn-orange">Edit</button>
+                    </form>
+                    <form method="get" action="{% url 'preset-delete' preset.pk %}">
+                        <button type="submit" class="btn-red">Delete</button>
+                    </form>
+                {% endif %}
+            </div>
+        </footer>
+    </article>
 
-        <dt>Description</dt>
-        <dd>{{ preset.description|default:"No description provided." }}</dd>
-
-        <dt>Flags</dt>
-        <dd>
-            {% if preset.hidden %}
-            <em>Flags are hidden for this preset.</em>
-            {% else %}
-            {{ preset.flags|default:"None" }}
-            {% endif %}
-        </dd>
-
-        <dt>Arguments</dt>
-        <dd>{{ preset.arguments|default:"None" }}</dd>
-
-        <dt>Generated</dt>
-        <dd>{{ preset.gen_count }} times</dd>
-    </dl>
-
-    <a href="{% url 'preset-list' %}">← Back to full list</a>
-    {% endblock %}
+    <a href="{{ request.META.HTTP_REFERER|default:'/' }}">← Back</a>
+{% endblock %}
