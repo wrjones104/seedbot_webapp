@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.discord',
     'django.contrib.redirects',
+    'django.contrib.sites',
 ]
 
 MIDDLEWARE = [
