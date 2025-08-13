@@ -26,12 +26,12 @@ WC_API_KEY = os.getenv("new_api_key")
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--)*++vepubv5xe*5h!9n2#*3&@91*x5ec9)a!1oqx9b1*++ioc'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['seedbot.net', 'www.seedbot.net']
 
 
 # Application definition
