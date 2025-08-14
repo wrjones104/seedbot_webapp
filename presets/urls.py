@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.preset_list_view, name='preset-list'),
     path('my-presets/', views.my_presets_view, name='my-presets'),
+    path('api/preset/<path:pk>/roll/', views.roll_seed_api_view, name='roll-seed-api'),
     path('connect-discord/', views.connect_discord_view, name='connect-discord'),
     path('preset/new/', views.preset_create_view, name='preset-create'),
     path('preset/<path:pk>/edit/', views.preset_update_view, name='preset-edit'),

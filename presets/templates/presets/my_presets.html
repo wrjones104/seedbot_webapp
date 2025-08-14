@@ -3,50 +3,51 @@
 {% block title %}My Presets{% endblock %}
 
 {% block content %}
-    <div class="grid mb-1">
-        <h1 style="margin-bottom: 0;">My Presets</h1>
-        <div style="text-align: right;">
-            <a href="{% url 'preset-create' %}" role="button">Create a New Preset</a>
-        </div>
+<div class="grid mb-1">
+    <h1 style="margin-bottom: 0;">My Presets</h1>
+    <div style="text-align: right;">
+        <a href="{% url 'preset-create' %}" role="button">Create a New Preset</a>
     </div>
+</div>
 
-    {% if presets %}
-        <div class="card-grid">
-            {% for preset in presets %}
-                <article>
-                    <header>
-                        <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
-                    </header>
-                    
-                    <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
-                    
-                    <details>
-                        <summary>Flags</summary>
-                        <p>
-                            <small>
-                                {% if preset.hidden %}
-                                    <em>Hidden</em>
-                                {% else %}
-                                    {{ preset.flags }}
-                                {% endif %}
-                            </small>
-                        </p>
-                    </details>
+{% if presets %}
+<div class="card-grid">
+    {% for preset in presets %}
+    <article>
+        <header>
+            <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
+        </header>
 
-                    <footer class="button-group">
-                        <form method="post" action="{% url 'roll-seed' preset.pk %}">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-blue">Roll Seed</button>
-                        </form>
-                        
-                        <form method="get" action="{% url 'preset-edit' preset.pk %}">
-                            <button type="submit" class="btn-orange">Edit</button>
-                        </form>
-                    </footer>
-                </article>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p>You have not created any presets yet.</p>
-    {% endif %}
+        <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
+
+        <details>
+            <summary>Flags</summary>
+            <p>
+                <small>
+                    {% if preset.hidden %}
+                    <em>Hidden</em>
+                    {% else %}
+                    {{ preset.flags }}
+                    {% endif %}
+                </small>
+            </p>
+        </details>
+
+        <footer class="button-group">
+            <form>
+                <button type="button" class="btn-blue js-roll-seed-btn"
+                    data-url="{% url 'roll-seed-api' preset.pk %}">Roll Seed</button>
+            </form>
+
+
+            <form method="get" action="{% url 'preset-edit' preset.pk %}">
+                <button type="submit" class="btn-orange">Edit</button>
+            </form>
+        </footer>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<p>You have not created any presets yet.</p>
+{% endif %}
 {% endblock %}

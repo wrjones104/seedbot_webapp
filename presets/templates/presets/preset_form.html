@@ -13,43 +13,27 @@
     <form method="post" id="preset-form">
         {% csrf_token %}
         {{ form.as_p }}
-        
-        <div class="button-group">
-            <button type="submit">Save Preset</button>
-            {% if preset %}
-                <a href="{% url 'preset-detail' preset.pk %}" role="button" class="secondary">Cancel</a>
-            {% else %}
-                <a href="{% url 'preset-list' %}" role="button" class="secondary">Cancel</a>
-            {% endif %}
-        </div>
     </form>
+
+    <div class="button-group">
+        <a href="#" id="submit-form-link" role="button">Save Preset</a>
+        
+        {% if preset %}
+            <a href="{% url 'preset-detail' preset.pk %}" role="button" class="secondary">Cancel</a>
+        {% else %}
+            <a href="{% url 'preset-list' %}" role="button" class="secondary">Cancel</a>
+        {% endif %}
+    </div>
 
     <dialog id="loading-modal">
         <article style="text-align: center;">
-            <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;">
+            <header>
+                <button aria-label="Close" rel="prev" onclick="closeModal('loading-modal')"></button>
+                <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;">
+            </header>
             <h3>Checking flags...</h3>
             <p>Please wait a moment.</p>
             <progress indeterminate></progress>
         </article>
     </dialog>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // This script handles the Select2 widget
-    $(document).ready(function() {
-        $('#id_arguments').select2({
-            placeholder: 'Select arguments',
-            allowClear: true
-        });
-    });
-
-    // This script now uses our new openModal function
-    const form = document.getElementById('preset-form');
-    if (form) {
-        form.addEventListener('submit', (event) => {
-            openModal('loading-modal');
-        });
-    }
-</script>
 {% endblock %}

@@ -6,7 +6,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SeedBot Presets{% endblock %}</title>
+
     <link rel="icon" type="image/png" href="{% static 'images/seedbot_new.png' %}">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
@@ -36,6 +38,7 @@
     </nav>
 
     <main class="container">
+        {% csrf_token %}
         {% block content %}
         {% endblock %}
     </main>
@@ -49,12 +52,10 @@
             <p>
                 <strong>Are you sure you want to log out?</strong>
             </p>
-
             <footer class="button-group">
                 <form>
                     <button type="button" class="secondary" onclick="closeModal('logout-modal')">Cancel</button>
                 </form>
-
                 <form method="post" action="{% url 'account_logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="contrast">Log Out</button>
@@ -63,10 +64,29 @@
         </article>
     </dialog>
 
+    <dialog id="seed-roll-modal">
+        <article style="text-align: center;">
+            <header>
+                <button aria-label="Close" rel="prev" onclick="closeModal('seed-roll-modal')"></button>
+                <h3 id="seed-roll-modal-header">Rolling Seed...</h3>
+            </header>
+            <div id="seed-roll-modal-content">
+                <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;">
+                <p>Please wait while we generate your seed.</p>
+                <progress indeterminate></progress>
+            </div>
+            <footer style="display: none;" id="seed-roll-modal-footer">
+                <button class="secondary" onclick="closeModal('seed-roll-modal')">Close</button>
+            </footer>
+        </article>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{% static 'js/pico.min.js' %}"></script>
 
     <script>
+        // Modal control functions
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
@@ -79,6 +99,70 @@
                 modal.close();
             }
         }
+
+        // AJAX function for rolling a seed
+        async function rollSeed(apiUrl) {
+            const modal = document.getElementById('seed-roll-modal');
+            const header = document.getElementById('seed-roll-modal-header');
+            const content = document.getElementById('seed-roll-modal-content');
+            const footer = document.getElementById('seed-roll-modal-footer');
+
+            header.innerText = 'Rolling Seed...';
+            content.innerHTML = `<img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;"><p>Please wait while we generate your seed.</p><progress indeterminate></progress>`;
+            footer.style.display = 'none';
+            openModal('seed-roll-modal');
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    header.innerText = 'Seed Generated!';
+                    content.innerHTML = `<p>Your seed is ready!</p><h4><a href="${data.seed_url}" target="_blank">${data.seed_url}</a></h4>`;
+                } else {
+                    header.innerText = 'An Error Occurred';
+                    content.innerHTML = `<p>Could not generate seed.</p><p><small>${data.error || 'Unknown error.'}</small></p>`;
+                }
+            } catch (error) {
+                header.innerText = 'An Error Occurred';
+                content.innerHTML = `<p>A network error occurred while trying to roll the seed.</p>`;
+            } finally {
+                footer.style.display = 'block';
+            }
+        }
+
+        // jQuery-dependent scripts
+        jQuery(document).ready(function ($) {
+            // Initializer for Select2 widgets
+            $('#id_arguments').select2({
+                placeholder: 'Select arguments',
+                allowClear: true
+            });
+
+            // Event listener for all "Roll Seed" buttons
+            $('.js-roll-seed-btn').on('click', function () {
+                const rollUrl = $(this).data('url');
+                if (rollUrl) {
+                    rollSeed(rollUrl);
+                }
+            });
+
+            // Event listener for the "Save Preset" link on the form page
+            $('#submit-form-link').on('click', function (e) {
+                e.preventDefault(); // Prevent the link from navigating
+
+                // First, open the loading modal
+                openModal('loading-modal');
+
+                // Then, find the main form and submit it
+                $('#preset-form').submit();
+            });
+        });
     </script>
 
     {% block scripts %}

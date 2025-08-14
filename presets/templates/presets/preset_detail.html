@@ -3,63 +3,59 @@
 {% block title %}{{ preset.preset_name }}{% endblock %}
 
 {% block content %}
-    <article>
-        <header>
-            <h2>{{ preset.preset_name }}</h2>
-            <p>Created by: {{ preset.creator_name }}</p>
-        </header>
+<article>
+    <header>
+        <h2>{{ preset.preset_name }}</h2>
+        <p>Created by: {{ preset.creator_name }}</p>
+    </header>
 
-        <dl>
-            <dt>Description</dt>
-            <dd>{{ preset.description|default:"No description provided." }}</dd>
+    <dl>
+        <dt>Description</dt>
+        <dd>{{ preset.description|default:"No description provided." }}</dd>
 
-            <dt>Flags</dt>
-            <dd>
-                {% if preset.hidden %}
-                    <em>Flags are hidden for this preset.</em>
-                {% else %}
-                    {{ preset.flags|default:"None" }}
-                {% endif %}
-            </dd>
+        <dt>Flags</dt>
+        <dd>
+            {% if preset.hidden %}
+            <em>Flags are hidden for this preset.</em>
+            {% else %}
+            {{ preset.flags|default:"None" }}
+            {% endif %}
+        </dd>
 
-            <dt>Arguments</dt>
-            <dd>{{ preset.arguments|default:"None" }}</dd>
+        <dt>Arguments</dt>
+        <dd>{{ preset.arguments|default:"None" }}</dd>
 
-            <dt>Times Generated</dt>
-            <dd>{{ preset.gen_count }}</dd>
-        </dl>
+        <dt>Times Generated</dt>
+        <dd>{{ preset.gen_count }}</dd>
+    </dl>
 
-        {% if api_error %}
-            <div class="error-box" style="text-align: center;">
-                <strong>Oops!</strong><br>
-                <small>{{ api_error }}</small>
-            </div>
-        {% endif %}
-        {% if seed_url %}
-            <div class="seed-result" style="text-align: center;">
-                <strong>Seed generated!</strong><br>
-                <a href="{{ seed_url }}" target="_blank">{{ seed_url }}</a>
-            </div>
-        {% endif %}
+    {% if api_error %}
+    <div class="error-box" style="text-align: center;">
+        <strong>Oops!</strong><br>
+        <small>{{ api_error }}</small>
+    </div>
+    {% endif %}
+    {% if seed_url %}
+    <div class="seed-result" style="text-align: center;">
+        <strong>Seed generated!</strong><br>
+        <a href="{{ seed_url }}" target="_blank">{{ seed_url }}</a>
+    </div>
+    {% endif %}
 
-        <footer>
-            <div class="button-group">
-                <form method="post" action="{% url 'roll-seed' preset.pk %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-blue">Roll Seed</button>
-                </form>
-                
-                {% if is_owner %}
-                    <form method="get" action="{% url 'preset-edit' preset.pk %}">
-                        <button type="submit" class="btn-orange">Edit</button>
-                    </form>
-                    <form method="get" action="{% url 'preset-delete' preset.pk %}">
-                        <button type="submit" class="btn-red">Delete</button>
-                    </form>
-                {% endif %}
-            </div>
-        </footer>
-    </article>
+    <footer>
+        <div class="button-group">
+            <button class="btn-blue js-roll-seed-btn" data-url="{% url 'roll-seed-api' preset.pk %}">Roll Seed</button>
+            {% if is_owner %}
+            <form method="get" action="{% url 'preset-edit' preset.pk %}">
+                <button type="submit" class="btn-orange">Edit</button>
+            </form>
+            <form method="get" action="{% url 'preset-delete' preset.pk %}">
+                <button type="submit" class="btn-red">Delete</button>
+            </form>
+            {% endif %}
+        </div>
+    </footer>
+</article>
 
-    <a href="{{ request.META.HTTP_REFERER|default:'/' }}">← Back</a>
+<a href="{{ request.META.HTTP_REFERER|default:'/' }}">← Back</a>
 {% endblock %}
