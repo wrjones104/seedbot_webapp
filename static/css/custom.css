@@ -104,3 +104,20 @@ article dl dt {
   background-color: var(--pico-primary-focus);
   color: var(--pico-primary-inverse);
 }
+
+.sort-form select {
+  margin-bottom: 2;
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--pico-spacing);
+  align-items: end;
+}
+
+@media (max-width: 768px) {
+  .filter-bar {
+    grid-template-columns: 1fr; 
+  }
+}

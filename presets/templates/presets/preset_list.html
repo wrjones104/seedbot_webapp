@@ -1,16 +1,27 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="grid mb-1">
-    <h1 style="margin-bottom: 0;">All Available Presets</h1>
-    <div style="text-align: right;">
-        <a href="{% url 'preset-create' %}" role="button">Create a New Preset</a>
+    <div class="grid mb-1">
+        <h1 style="margin-bottom: 0;">All Available Presets</h1>
+        <div style="text-align: right;">
+            <a href="{% url 'preset-create' %}" role="button">Create a New Preset</a>
+        </div>
     </div>
-</div>
 
-<form method="get">
-    <input type="search" id="search" name="q" placeholder="Search presets..." value="{{ search_query }}">
-</form>
+    <form method="get" class="filter-bar">
+        <input 
+            type="search" 
+            id="search"
+            name="q" 
+            placeholder="Search all presets..." 
+            value="{{ search_query }}"
+        >
+        <select name="sort" id="sort" onchange="this.form.submit()">
+            <option value="-count" {% if current_sort == "-count" %}selected{% endif %}>Sort: Popularity</option>
+            <option value="name" {% if current_sort == "name" %}selected{% endif %}>Sort: Alphabetical</option>
+            <option value="creator" {% if current_sort == "creator" %}selected{% endif %}>Sort: Creator</option>
+        </select>
+    </form>
 
 <div class="card-grid">
     {% for preset in presets %}

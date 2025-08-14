@@ -15,6 +15,16 @@ from .models import Preset, UserPermission
 from .forms import PresetForm
 from .decorators import discord_login_required
 
+SORT_OPTIONS = {
+    'name': 'preset_name',
+    '-name': '-preset_name',
+    'creator': 'creator_name',
+    '-creator': '-creator_name',
+    'count': 'gen_count',
+    '-count': '-gen_count',
+}
+DEFAULT_SORT = '-gen_count'
+
 # --- Helper Function ---
 
 def get_silly_things_list():
@@ -75,7 +85,9 @@ def write_to_gsheets(metrics_data):
 # --- Views ---
 
 def preset_list_view(request):
-    queryset = Preset.objects.exclude(preset_name='').order_by('-gen_count', 'preset_name')
+    sort_key = request.GET.get('sort', DEFAULT_SORT)
+    order_by_field = SORT_OPTIONS.get(sort_key, DEFAULT_SORT)
+    queryset = Preset.objects.exclude(preset_name='').order_by(order_by_field)
     query = request.GET.get('q')
     if query:
         queryset = queryset.filter(
@@ -99,6 +111,7 @@ def preset_list_view(request):
         'search_query': query if query else '',
         'user_discord_id': user_discord_id,
         'silly_things_json': silly_things_json,
+        'current_sort': sort_key,
     }
     return render(request, 'presets/preset_list.html', context)
 
@@ -187,19 +200,38 @@ def roll_seed_view(request, pk):
 
 @discord_login_required
 def my_presets_view(request):
-    user_presets = []
+    # --- Define all variables at the top ---
+    default_sort = 'name' 
+    sort_key = request.GET.get('sort', default_sort)
+    order_by_field = SORT_OPTIONS.get(sort_key, SORT_OPTIONS.get(default_sort))
+    query = request.GET.get('q')
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
-    try:
-        discord_account = request.user.socialaccount_set.get(provider='discord')
-        discord_id = discord_account.uid
-        user_presets = Preset.objects.filter(creator_id=discord_id).order_by('preset_name')
-    except SocialAccount.DoesNotExist:
-        pass
 
+    # --- Build the database query ---
+    # We can safely get the discord account now, no try/except needed
+    discord_account = request.user.socialaccount_set.get(provider='discord')
+    discord_id = discord_account.uid
+    
+    # Start with the base query for this user's presets
+    user_presets = Preset.objects.filter(creator_id=discord_id)
+
+    # Apply the search filter if it exists
+    if query:
+        user_presets = user_presets.filter(
+            Q(preset_name__icontains=query) |
+            Q(description__icontains=query)
+        )
+    
+    # Apply the sorting at the end
+    user_presets = user_presets.order_by(order_by_field)
+
+    # --- Build the context ---
     context = {
         'presets': user_presets,
         'silly_things_json': silly_things_json,
+        'current_sort': sort_key,
+        'search_query': query if query else '',
     }
     return render(request, 'presets/my_presets.html', context)
 
