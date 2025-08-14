@@ -17,6 +17,20 @@ from .decorators import discord_login_required
 
 # --- Helper Function ---
 
+def get_silly_things_list():
+    """
+    Reads the silly things text file and returns a list of lines.
+    Returns an empty list if the file is not found.
+    """
+    try:
+        file_path = settings.BASE_DIR.parent / 'seedbot2000' / 'db' / 'silly_things_for_seedbot_to_say.txt'
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = [line.strip() for line in f if line.strip()]
+        return lines
+    except FileNotFoundError:
+        print("silly_things_for_seedbot_to_say.txt not found.")
+        return ["Let's find some treasure!"]
+
 def user_is_official(user_id):
     """Helper function to check a user's admin status from the database."""
     try:
@@ -69,6 +83,8 @@ def preset_list_view(request):
             Q(description__icontains=query) |
             Q(creator_name__icontains=query)
         )
+    silly_things = get_silly_things_list()
+    silly_things_json = json.dumps(silly_things)
     
     # Get the logged-in user's Discord ID, if they have one
     user_discord_id = None
@@ -81,13 +97,16 @@ def preset_list_view(request):
     context = {
         'presets': queryset,
         'search_query': query if query else '',
-        'user_discord_id': user_discord_id, # Pass ID to template
+        'user_discord_id': user_discord_id,
+        'silly_things_json': silly_things_json,
     }
     return render(request, 'presets/preset_list.html', context)
 
 def preset_detail_view(request, pk):
     preset = get_object_or_404(Preset, pk=pk)
     is_owner = False
+    silly_things = get_silly_things_list()
+    silly_things_json = json.dumps(silly_things)
     
     # Check if the current user is the owner of the preset
     if request.user.is_authenticated:
@@ -100,7 +119,9 @@ def preset_detail_view(request, pk):
 
     context = {
         'preset': preset,
-        'is_owner': is_owner, # Pass the ownership flag to the template
+        'is_owner': is_owner,
+        'silly_things_json': silly_things_json,
+
     }
     return render(request, 'presets/preset_detail.html', context)
 
@@ -167,6 +188,8 @@ def roll_seed_view(request, pk):
 @discord_login_required
 def my_presets_view(request):
     user_presets = []
+    silly_things = get_silly_things_list()
+    silly_things_json = json.dumps(silly_things)
     try:
         discord_account = request.user.socialaccount_set.get(provider='discord')
         discord_id = discord_account.uid
@@ -175,7 +198,8 @@ def my_presets_view(request):
         pass
 
     context = {
-        'presets': user_presets
+        'presets': user_presets,
+        'silly_things_json': silly_things_json,
     }
     return render(request, 'presets/my_presets.html', context)
 

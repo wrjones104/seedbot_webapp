@@ -87,6 +87,7 @@
 
     <script>
         // Modal control functions
+        const SILLY_THINGS = {{ silly_things_json|safe }};
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
@@ -106,9 +107,11 @@
             const header = document.getElementById('seed-roll-modal-header');
             const content = document.getElementById('seed-roll-modal-content');
             const footer = document.getElementById('seed-roll-modal-footer');
+            const randomLine = SILLY_THINGS[Math.floor(Math.random() * SILLY_THINGS.length)];
+            const capitalizedLine = randomLine.charAt(0).toUpperCase() + randomLine.slice(1);
 
             header.innerText = 'Rolling Seed...';
-            content.innerHTML = `<img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;"><p>Please wait while we generate your seed.</p><progress indeterminate></progress>`;
+            content.innerHTML = `<img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;"><p><strong>${capitalizedLine}</strong></p><progress indeterminate></progress>`;
             footer.style.display = 'none';
             openModal('seed-roll-modal');
 
