@@ -13,17 +13,16 @@
     <form method="post" id="preset-form">
         {% csrf_token %}
         {{ form.as_p }}
-    </form>
-
-    <div class="button-group">
-        <a href="#" id="submit-form-link" role="button">Save Preset</a>
         
-        {% if preset %}
-            <a href="{% url 'preset-detail' preset.pk %}" role="button" class="secondary">Cancel</a>
-        {% else %}
-            <a href="{% url 'preset-list' %}" role="button" class="secondary">Cancel</a>
-        {% endif %}
-    </div>
+        <div class="button-group">
+            <button type="submit">Save Preset</button>
+            {% if preset %}
+                <a href="{% url 'preset-detail' preset.pk %}" role="button" class="secondary">Cancel</a>
+            {% else %}
+                <a href="{% url 'preset-list' %}" role="button" class="secondary">Cancel</a>
+            {% endif %}
+        </div>
+    </form>
 
     <dialog id="loading-modal">
         <article style="text-align: center;">
@@ -33,33 +32,23 @@
             <progress indeterminate></progress>
         </article>
     </dialog>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
+    // This script handles the Select2 widget
     $(document).ready(function() {
-        // This script handles the Select2 widget
         $('#id_arguments').select2({
             placeholder: 'Select arguments',
             allowClear: true
         });
-
-        // --- ADD THIS NEW SCRIPT FOR THE SAVE BUTTON ---
-        // Find the "Save" link
-        $('#submit-form-link').on('click', function(e) {
-            e.preventDefault(); // Prevent the link from navigating anywhere
-            $('#preset-form').submit(); // Find the form and submit it
-        });
     });
 
-    // This script handles showing the modal on form submission
+    // This script now uses our new openModal function
     const form = document.getElementById('preset-form');
-    const modal = document.getElementById('loading-modal');
-
-    if (form && modal) {
+    if (form) {
         form.addEventListener('submit', (event) => {
-            modal.showModal();
+            openModal('loading-modal');
         });
     }
 </script>

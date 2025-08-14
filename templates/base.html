@@ -1,22 +1,25 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SeedBot Presets{% endblock %}</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <link rel="icon" type="image/png" href="{% static 'images/seedbot_new.png' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
 </head>
+
 <body>
-    
+
     <nav class="container">
         <ul>
             <li>
                 <a href="{% url 'preset-list' %}" class="secondary">
-                    <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 32px; vertical-align: middle; margin-right: 10px;">
+                    <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot"
+                        style="height: 32px; vertical-align: middle; margin-right: 10px;">
                     <strong>SeedBot Presets</strong>
                 </a>
             </li>
@@ -24,10 +27,10 @@
         <ul>
             <li><a href="{% url 'preset-list' %}">All Presets</a></li>
             {% if user.is_authenticated %}
-                <li><a href="{% url 'my-presets' %}">My Presets</a></li>
-                <li><a href="{% url 'account_logout' %}" role="button">Logout</a></li>
+            <li><a href="{% url 'my-presets' %}">My Presets</a></li>
+            <li><a href="#" role="button" onclick="openModal('logout-modal')">Logout</a></li>
             {% else %}
-                <li><a href="{% url 'account_login' %}" role="button">Login</a></li>
+            <li><a href="{% url 'account_login' %}" role="button">Login</a></li>
             {% endif %}
         </ul>
     </nav>
@@ -37,10 +40,49 @@
         {% endblock %}
     </main>
 
+    <dialog id="logout-modal">
+        <article style="text-align: center;">
+            <header>
+                <button aria-label="Close" rel="prev" onclick="closeModal('logout-modal')"></button>
+                <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;">
+            </header>
+            <p>
+                <strong>Are you sure you want to log out?</strong>
+            </p>
+
+            <footer class="button-group">
+                <form>
+                    <button type="button" class="secondary" onclick="closeModal('logout-modal')">Cancel</button>
+                </form>
+
+                <form method="post" action="{% url 'account_logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="contrast">Log Out</button>
+                </form>
+            </footer>
+        </article>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.showModal();
+            }
+        }
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.close();
+            }
+        }
+    </script>
 
     {% block scripts %}
     {% endblock %}
 </body>
+
 </html>

@@ -4,23 +4,24 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load the .env file specified in your gunicorn.service file
-# Note: Ensure the .env file path is correct relative to your bot's location.
 ENV_PATH = BASE_DIR.parent / 'seedbot2000' / '.env'
 load_dotenv(dotenv_path=ENV_PATH)
 
-# --- SECRETS (Loaded from .env file) ---
 SECRET_KEY = os.getenv('SECRET_KEY')
 WC_API_KEY = os.getenv('new_api_key')
-BOT_TOKEN = os.getenv('your_bot_token_env_name')
+BOT_TOKEN = os.getenv('DISCORD_TOKEN')
+ENV_TYPE = os.getenv('ENVIRONMENT', 'dev')
 
-# --- PRODUCTION SETTINGS (Hardcoded) ---
-DEBUG = False
-ALLOWED_HOSTS = ['seedbot.net', 'www.seedbot.net']
-CSRF_TRUSTED_ORIGINS = ['https://seedbot.net', 'https://www.seedbot.net']
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+if ENV_TYPE == "prod":
+    DEBUG = False
+    ALLOWED_HOSTS = ['seedbot.net', 'www.seedbot.net']
+    CSRF_TRUSTED_ORIGINS = ['https://seedbot.net', 'https://www.seedbot.net']
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    DEBUG = True
+    ALLOWED_HOSTS = []
 
 # --- Application Definition ---
 INSTALLED_APPS = [
@@ -98,3 +99,21 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {'access_type': 'online'},
     }
 }
+
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# Do not require users to have a username on the site
+ACCOUNT_USERNAME_REQUIRED = False
+
+# Email is provided by Discord, so we require it but don't need the user to type it in
+ACCOUNT_EMAIL_REQUIRED = True
+
+# Set email verification to "none" for the most seamless experience.
+# Discord already verified their email.
+ACCOUNT_EMAIL_VERIFICATION = "none"
+
+# Use email as the primary identifier for the account
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+
+# Allow login to start immediately with a simple link click
+SOCIALACCOUNT_LOGIN_ON_GET = True

@@ -10,6 +10,7 @@ from . import flag_processor
 
 from .models import Preset, UserPermission
 from .forms import PresetForm
+from .decorators import discord_login_required
 
 # --- Helper Function ---
 
@@ -110,7 +111,7 @@ def roll_seed_view(request, pk):
     }
     return render(request, 'presets/preset_detail.html', context)
 
-@login_required
+@discord_login_required
 def my_presets_view(request):
     user_presets = []
     try:
@@ -125,35 +126,26 @@ def my_presets_view(request):
     }
     return render(request, 'presets/my_presets.html', context)
 
-@login_required
+@discord_login_required 
 def preset_create_view(request):
-    is_official = False
-    try:
-        discord_id = request.user.socialaccount_set.get(provider='discord').uid
-        is_official = user_is_official(discord_id)
-    except SocialAccount.DoesNotExist:
-        pass
+    discord_account = request.user.socialaccount_set.get(provider='discord')
+    is_official = user_is_official(discord_account.uid)
 
     if request.method == 'POST':
         form = PresetForm(request.POST, is_official=is_official)
         if form.is_valid():
             preset = form.save(commit=False)
-            
-            discord_account = request.user.socialaccount_set.get(provider='discord')
             preset.creator_id = discord_account.uid
-            preset.creator_name = discord_account.user.username
+            preset.creator_name = discord_account.extra_data.get('username', request.user.username)
             preset.save()
             return redirect('my-presets')
     else:
         form = PresetForm(is_official=is_official)
 
-    context = {
-        'form': form,
-        'preset': None # To make the template title conditional work
-    }
+    context = {'form': form, 'preset': None}
     return render(request, 'presets/preset_form.html', context)
 
-@login_required
+@discord_login_required
 def preset_update_view(request, pk):
     preset = get_object_or_404(Preset, pk=pk)
     
@@ -181,7 +173,7 @@ def preset_update_view(request, pk):
     }
     return render(request, 'presets/preset_form.html', context)
 
-@login_required
+@discord_login_required
 def preset_delete_view(request, pk):
     preset = get_object_or_404(Preset, pk=pk)
     
@@ -200,3 +192,6 @@ def preset_delete_view(request, pk):
         'preset': preset
     }
     return render(request, 'presets/preset_confirm_delete.html', context)
+
+def connect_discord_view(request):
+    return render(request, 'presets/connect_discord.html')

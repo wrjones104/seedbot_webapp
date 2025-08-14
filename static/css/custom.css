@@ -14,49 +14,59 @@ main .card-grid article {
   gap: var(--pico-spacing);
 }
 
-button, [role="button"] {
-  font-weight: 600;
+/* --- FORCEFUL BUTTON STYLES --- */
+/* This rule targets all button types and uses !important to win the specificity war */
+button,
+[role="button"] {
+  font-weight: 600 !important;
 }
 
+/* This forces our button group layout to be applied */
 .button-group {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--pico-spacing);
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: var(--pico-spacing) !important;
+}
+
+/* This forces items in the group to size to their content */
+.button-group > * {
+  flex-grow: 0 !important;
+  width: auto !important;
+  margin-bottom: 0 !important;
 }
 
 .button-group form {
   margin: 0;
 }
 
+/* --- Custom Button Colors --- */
 .btn-blue {
   --pico-background-color: var(--pico-primary);
   --pico-border-color: var(--pico-primary);
   --pico-color: var(--pico-primary-inverse);
 }
-
 .btn-orange {
   --pico-background-color: #f57c00;
   --pico-border-color: #f57c00;
   --pico-color: #ffffff;
 }
-
 .btn-red {
   --pico-background-color: #c62828;
   --pico-border-color: #c62828;
   --pico-color: #ffffff;
 }
 
+/* --- Other Styles --- */
 article dl dt {
   font-weight: bold;
 }
-
-/* Utility Classes */
 .mb-1 {
   margin-bottom: var(--pico-spacing);
 }
 
-/* Select2 Theming */
+/* --- Select2 Theming --- */
+/* (All select2 styles are unchanged) */
 .select2-container--default .select2-selection--multiple {
   background-color: var(--pico-form-element-background-color);
   border: var(--pico-form-element-border-width) solid var(--pico-form-element-border-color);
