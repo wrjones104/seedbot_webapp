@@ -121,3 +121,16 @@ article dl dt {
     grid-template-columns: 1fr; 
   }
 }
+
+.js-feature-btn {
+  border: none !important;
+  background: transparent !important;
+  
+  opacity: 0.5;
+  
+  transition: opacity 0.2s ease-in-out;
+}
+
+.js-feature-btn:hover {
+  opacity: 1;
+}

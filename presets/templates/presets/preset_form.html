@@ -15,15 +15,15 @@
         {{ form.as_p }}
     </form>
 
-    <div class="button-group">
-        <a href="#" id="submit-form-link" role="button">Save Preset</a>
-        
-        {% if preset %}
-            <a href="{% url 'preset-detail' preset.pk %}" role="button" class="secondary">Cancel</a>
-        {% else %}
-            <a href="{% url 'preset-list' %}" role="button" class="secondary">Cancel</a>
-        {% endif %}
-    </div>
+<div class="button-group">
+    <a href="#" id="submit-form-link" role="button">Save Preset</a>
+    
+    {% if preset %}
+        <a href="{% url 'preset-detail' preset.pk %}" role="button" class="secondary">Cancel</a>
+    {% else %}
+        <a href="{% url 'preset-list' %}" role="button" class="secondary">Cancel</a>
+    {% endif %}
+</div>
 
     <dialog id="loading-modal">
         <article style="text-align: center;">

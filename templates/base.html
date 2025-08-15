@@ -173,6 +173,7 @@
             // Event listener for the "Save Preset" link on the form page
             $('#submit-form-link').on('click', function(e) {
                 e.preventDefault();
+                openModal('loading-modal');
                 $('#preset-form').submit();
             });
 
