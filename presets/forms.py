@@ -3,6 +3,7 @@ import json
 from django import forms
 from django.conf import settings
 from .models import Preset
+from .profanity_list import PROFANITY_WORDS
 
 # Define the list of available arguments as a constant
 ARGUMENT_CHOICES = [
@@ -48,6 +49,22 @@ class PresetForm(forms.ModelForm):
         
         # Call the parent save method to save the instance
         return super().save(commit=commit)
+
+    def clean_preset_name(self):
+        preset_name = self.cleaned_data['preset_name']
+        for word in PROFANITY_WORDS:
+            if word in preset_name.lower():
+                raise forms.ValidationError("Please avoid using inappropriate language in the preset name.")
+        return preset_name
+
+    def clean_description(self):
+        description = self.cleaned_data['description']
+        if description:
+            for word in PROFANITY_WORDS:
+                if word in description.lower():
+                    raise forms.ValidationError("Please avoid using inappropriate language in the description.")
+        return description
+
     def clean_flags(self):
             # Get the flag string submitted by the user
             flags_data = self.cleaned_data['flags']
