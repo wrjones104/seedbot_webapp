@@ -12,7 +12,10 @@ google-auth-oauthlib==1.2.2
 googleapis-common-protos==1.70.0
 httplib2==0.22.0
 idna==3.10
+joblib==1.5.1
+numpy==2.3.2
 oauthlib==3.3.1
+profanity==1.1
 proto-plus==1.26.1
 protobuf==6.31.1
 pyasn1==0.6.1
@@ -23,7 +26,10 @@ python-dotenv==1.1.1
 requests==2.32.4
 requests-oauthlib==2.0.0
 rsa==4.9.1
+scipy==1.16.1
+setuptools==80.9.0
 sqlparse==0.5.3
+threadpoolctl==3.6.0
 tzdata==2025.2
 uritemplate==4.2.0
 urllib3==2.5.0

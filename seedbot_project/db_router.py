@@ -15,10 +15,8 @@ class SeedBotRouter:
     def db_for_write(self, model, **hints):
         if model._meta.app_label == 'presets':
             if model._meta.model_name in ['preset', 'userpermission']:
-                print("... Routing to 'seedbot_db'")
                 return 'seedbot_db'
             else:
-                print("... Routing to 'default'")
                 return 'default'
         return None
 
