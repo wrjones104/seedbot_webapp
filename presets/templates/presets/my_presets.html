@@ -24,44 +24,13 @@
         </select>
     </form>
 
-{% if presets %}
-<div class="card-grid">
-    {% for preset in presets %}
-    <article>
-        <header>
-            <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
-        </header>
-
-        <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
-
-        <details>
-            <summary>Flags</summary>
-            <p>
-                <small>
-                    {% if preset.hidden %}
-                    <em>Hidden</em>
-                    {% else %}
-                    {{ preset.flags }}
-                    {% endif %}
-                </small>
-            </p>
-        </details>
-
-        <footer class="button-group">
-            <form>
-                <button type="button" class="btn-blue js-roll-seed-btn"
-                    data-url="{% url 'roll-seed-api' preset.pk %}">Roll Seed</button>
-            </form>
-
-
-            <form method="get" action="{% url 'preset-edit' preset.pk %}">
-                <button type="submit" class="btn-orange">Edit</button>
-            </form>
-        </footer>
-    </article>
-    {% endfor %}
-</div>
-{% else %}
-<p>You have not created any presets yet.</p>
-{% endif %}
+    {% if presets %}
+        <div class="card-grid">
+            {% for preset in presets %}
+                {% include "presets/_preset_card.html" %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <p style="margin-top: 2rem; text-align: center;">You have not created any presets yet.</p>
+    {% endif %}
 {% endblock %}

@@ -102,18 +102,6 @@ SOCIALACCOUNT_PROVIDERS = {
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
 
-# Do not require users to have a username on the site
-ACCOUNT_USERNAME_REQUIRED = False
-
-# Email is provided by Discord, so we require it but don't need the user to type it in
-ACCOUNT_EMAIL_REQUIRED = True
-
-# Set email verification to "none" for the most seamless experience.
-# Discord already verified their email.
 ACCOUNT_EMAIL_VERIFICATION = "none"
 
-# Use email as the primary identifier for the account
-ACCOUNT_AUTHENTICATION_METHOD = "email"
-
-# Allow login to start immediately with a simple link click
 SOCIALACCOUNT_LOGIN_ON_GET = True

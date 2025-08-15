@@ -5,26 +5,31 @@ class SeedBotRouter:
     """
     def db_for_read(self, model, **hints):
         if model._meta.app_label == 'presets':
-            return 'seedbot_db'
+            if model._meta.model_name in ['preset', 'userpermission']:
+                return 'seedbot_db'
+            else:
+                return 'default'
+        
         return None
 
     def db_for_write(self, model, **hints):
         if model._meta.app_label == 'presets':
-            return 'seedbot_db'
+            if model._meta.model_name in ['preset', 'userpermission']:
+                print("... Routing to 'seedbot_db'")
+                return 'seedbot_db'
+            else:
+                print("... Routing to 'default'")
+                return 'default'
         return None
 
     def allow_relation(self, obj1, obj2, **hints):
-        # Allow relations if a model in the presets app is involved.
-        if (
-            obj1._meta.app_label == 'presets' or
-            obj2._meta.app_label == 'presets'
-        ):
-           return True
-        return None
-
+        return True
+    
     def allow_migrate(self, db, app_label, model_name=None, **hints):
-        # Make sure the presets app only appears in the 'seedbot_db' database.
         if app_label == 'presets':
-            return db == 'seedbot_db'
-        # All other apps will migrate to the 'default' database.
+            if model_name in ['preset', 'userpermission']:
+                return db == 'seedbot_db'
+            else:
+                return db == 'default'
+        
         return db == 'default'

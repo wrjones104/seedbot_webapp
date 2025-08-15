@@ -1,27 +1,24 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SeedBot Presets{% endblock %}</title>
-
+    
     <link rel="icon" type="image/png" href="{% static 'images/seedbot_new.png' %}">
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
 </head>
-
 <body>
-
+    
     <nav class="container">
         <ul>
             <li>
                 <a href="{% url 'preset-list' %}" class="secondary">
-                    <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot"
-                        style="height: 32px; vertical-align: middle; margin-right: 10px;">
+                    <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 32px; vertical-align: middle; margin-right: 10px;">
                     <strong>SeedBot Presets</strong>
                 </a>
             </li>
@@ -29,10 +26,10 @@
         <ul>
             <li><a href="{% url 'preset-list' %}">All Presets</a></li>
             {% if user.is_authenticated %}
-            <li><a href="{% url 'my-presets' %}">My Presets</a></li>
-            <li><a href="#" role="button" onclick="openModal('logout-modal')">Logout</a></li>
+                <li><a href="{% url 'my-presets' %}">My Presets</a></li>
+                <li><a href="#" role="button" onclick="openModal('logout-modal')">Logout</a></li>
             {% else %}
-            <li><a href="{% url 'account_login' %}" role="button">Login</a></li>
+                <li><a href="{% url 'account_login' %}" role="button">Login</a></li>
             {% endif %}
         </ul>
     </nav>
@@ -86,8 +83,9 @@
     <script src="{% static 'js/pico.min.js' %}"></script>
 
     <script>
+        const SILLY_THINGS = {{ silly_things_json|default:'[]'|safe }};
+
         // Modal control functions
-        const SILLY_THINGS = {{ silly_things_json|safe }};
         function openModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) {
@@ -107,7 +105,7 @@
             const header = document.getElementById('seed-roll-modal-header');
             const content = document.getElementById('seed-roll-modal-content');
             const footer = document.getElementById('seed-roll-modal-footer');
-            const randomLine = SILLY_THINGS[Math.floor(Math.random() * SILLY_THINGS.length)];
+            const randomLine = SILLY_THINGS.length > 0 ? SILLY_THINGS[Math.floor(Math.random() * SILLY_THINGS.length)] : "Rolling your seed...";
             const capitalizedLine = randomLine.charAt(0).toUpperCase() + randomLine.slice(1);
 
             header.innerText = 'Rolling Seed...';
@@ -139,8 +137,25 @@
             }
         }
 
+        // Helper function to show/hide the featured presets header
+        function checkFeaturedVisibility() {
+            const featuredGrid = $('#featured-grid');
+            const featuredHeader = $('#featured-header');
+            const featuredHr = $('#featured-hr');
+
+            if (featuredGrid && featuredHeader && featuredHr) {
+                if (featuredGrid.children('article').length > 0) {
+                    featuredHeader.show();
+                    featuredHr.show();
+                } else {
+                    featuredHeader.hide();
+                    featuredHr.hide();
+                }
+            }
+        }
+
         // jQuery-dependent scripts
-        jQuery(document).ready(function ($) {
+        jQuery(document).ready(function($) {
             // Initializer for Select2 widgets
             $('#id_arguments').select2({
                 placeholder: 'Select arguments',
@@ -148,28 +163,56 @@
             });
 
             // Event listener for all "Roll Seed" buttons
-            $('.js-roll-seed-btn').on('click', function () {
+            $('.js-roll-seed-btn').on('click', function() {
                 const rollUrl = $(this).data('url');
                 if (rollUrl) {
                     rollSeed(rollUrl);
                 }
             });
-
+            
             // Event listener for the "Save Preset" link on the form page
-            $('#submit-form-link').on('click', function (e) {
-                e.preventDefault(); // Prevent the link from navigating
-
-                // First, open the loading modal
-                openModal('loading-modal');
-
-                // Then, find the main form and submit it
+            $('#submit-form-link').on('click', function(e) {
+                e.preventDefault();
                 $('#preset-form').submit();
             });
+
+            // Event listener for the feature/pin buttons
+            $(document).on('click', '.js-feature-btn', function() {
+                const button = $(this);
+                const featureUrl = button.data('url');
+                const card = button.closest('article');
+                const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+                fetch(featureUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        if (data.featured) {
+                            card.fadeOut(200, function() {
+                                $('#featured-grid').prepend(card);
+                                card.fadeIn(200);
+                                checkFeaturedVisibility();
+                            });
+                        } else {
+                            card.fadeOut(200, function() {
+                                $('#regular-grid').prepend(card);
+                                card.fadeIn(200);
+                                checkFeaturedVisibility();
+                            });
+                        }
+                    }
+                });
+            });
+
+            // Call the visibility check on initial page load
+            checkFeaturedVisibility();
         });
     </script>
 
     {% block scripts %}
     {% endblock %}
 </body>
-
 </html>

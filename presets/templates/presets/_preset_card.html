@@ -1,0 +1,42 @@
+<article data-pk="{{ preset.pk }}">
+    <header>
+        {% if is_race_admin %}
+            <button 
+                class="contrast outline secondary js-feature-btn" 
+                data-url="{% url 'toggle-feature' preset.pk %}"
+                aria-label="Toggle Featured"
+                style="float: right; padding: 0.25rem 0.5rem; line-height: 1;">
+                📌
+            </button>
+        {% endif %}
+        <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
+        <br><small>By: {{ preset.creator_name }}</small>
+    </header>
+    
+    <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
+    
+    <details>
+        <summary>Flags</summary>
+        <p>
+            <small>
+                {% if preset.hidden %}
+                    <em>Hidden</em>
+                {% else %}
+                    {{ preset.flags }}
+                {% endif %}
+            </small>
+        </p>
+    </details>
+
+    <footer class="button-group">
+        <form>
+            <button type="button" class="btn-blue js-roll-seed-btn" data-url="{% url 'roll-seed-api' preset.pk %}">Roll Seed</button>
+        </form>
+        
+        {% if preset.creator_id == user_discord_id %}
+            <form method="get" action="{% url 'preset-edit' preset.pk %}">
+                <button type="submit" class="btn-orange">Edit</button>
+            </form>
+        {% endif %}
+    </footer>
+</article>

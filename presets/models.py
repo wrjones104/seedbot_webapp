@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver              
 
 class Preset(models.Model):
     # It's best to explicitly define a primary key. Since `preset_name` is likely unique,
@@ -45,3 +47,22 @@ class UserPermission(models.Model):
 
     def __str__(self):
         return str(self.user_id)
+    
+class FeaturedPreset(models.Model):
+    preset_name = models.CharField(max_length=255, primary_key=True)
+    featured_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.preset_name
+    
+@receiver(post_delete, sender=Preset)
+def delete_featured_preset_on_preset_delete(sender, instance, **kwargs):
+    """
+    When a Preset is deleted, this signal finds and deletes the
+    corresponding FeaturedPreset entry, if one exists.
+    """
+    try:
+        FeaturedPreset.objects.filter(preset_name=instance.pk).delete()
+        print(f"Cleaned up featured entry for deleted preset: {instance.pk}")
+    except Exception as e:
+        print(f"Error during featured preset cleanup: {e}")

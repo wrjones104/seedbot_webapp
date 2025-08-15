@@ -8,6 +8,15 @@
         </div>
     </div>
 
+    <h2 class="featured-header" id="featured-header" {% if not featured_presets %}style="display: none;"{% endif %}>Featured Presets</h2>
+    
+    <div class="card-grid" id="featured-grid">
+        {% for preset in featured_presets %}
+            {% include "presets/_preset_card.html" %}
+        {% endfor %}
+    </div>
+
+    <hr id="featured-hr" {% if not featured_presets %}style="display: none;"{% endif %}>
     <form method="get" class="filter-bar">
         <input 
             type="search" 
@@ -23,42 +32,9 @@
         </select>
     </form>
 
-<div class="card-grid">
-    {% for preset in presets %}
-    <article>
-        <header>
-            <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
-            <br><small>By: {{ preset.creator_name }}</small>
-        </header>
-
-        <p>{{ preset.description|default:"No description."|truncatewords:20 }}</p>
-
-        <details>
-            <summary>Flags</summary>
-            <p>
-                <small>
-                    {% if preset.hidden %}
-                    <em>Hidden</em>
-                    {% else %}
-                    {{ preset.flags }}
-                    {% endif %}
-                </small>
-            </p>
-        </details>
-
-        <footer class="button-group">
-            <form>
-                <button type="button" class="btn-blue js-roll-seed-btn"
-                    data-url="{% url 'roll-seed-api' preset.pk %}">Roll Seed</button>
-            </form>
-
-            {% if preset.creator_id == user_discord_id %}
-            <form method="get" action="{% url 'preset-edit' preset.pk %}">
-                <button type="submit" class="btn-orange">Edit</button>
-            </form>
-            {% endif %}
-        </footer>
-    </article>
-    {% endfor %}
-</div>
+    <div class="card-grid" id="regular-grid">
+        {% for preset in presets %}
+            {% include "presets/_preset_card.html" %}
+        {% endfor %}
+    </div>
 {% endblock %}
