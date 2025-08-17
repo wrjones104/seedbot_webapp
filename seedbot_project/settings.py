@@ -19,9 +19,23 @@ if ENV_TYPE == "prod":
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Celery settings for Production
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 else:
     DEBUG = True
     ALLOWED_HOSTS = []
+    # Celery settings for Development
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+
+# --- Celery Configuration Options ---
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+
 
 # --- Application Definition ---
 INSTALLED_APPS = [
@@ -82,10 +96,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- Static files ---
+# --- Static and Media Files ---
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = '/media/'
+# This path now correctly points to where the Celery task is saving the seeds.
+MEDIA_ROOT = BASE_DIR.parent / 'seedbot2000' / 'WorldsCollide' / 'seeds'
+
 
 # --- Django-Allauth & Sites Framework ---
 AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend', 'allauth.account.auth_backends.AuthenticationBackend']

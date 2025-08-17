@@ -5,14 +5,17 @@ from datetime import datetime
 from django.conf import settings 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import JsonResponse
 from allauth.socialaccount.models import SocialAccount
+from celery.result import AsyncResult
+import os
 
 from . import flag_processor
-from .models import Preset, UserPermission, FeaturedPreset
+from .models import Preset, UserPermission, FeaturedPreset, SeedLog
 from .forms import PresetForm
 from .decorators import discord_login_required
+from .tasks import create_local_seed_task
 
 # --- Constants ---
 SORT_OPTIONS = {
@@ -23,7 +26,6 @@ SORT_OPTIONS = {
 DEFAULT_SORT = '-gen_count'
 
 # --- Helper Functions ---
-
 def get_silly_things_list():
     """Reads the silly things text file and returns a list of lines."""
     try:
@@ -133,36 +135,58 @@ def preset_detail_view(request, pk):
     return render(request, 'presets/preset_detail.html', context)
 
 @discord_login_required
-@discord_login_required
 def my_presets_view(request):
-    default_sort = 'name' 
-    sort_key = request.GET.get('sort', default_sort)
-    order_by_field = SORT_OPTIONS.get(sort_key, SORT_OPTIONS.get(default_sort))
-    query = request.GET.get('q')
-    
     discord_account = request.user.socialaccount_set.get(provider='discord')
-    discord_id_str = discord_account.uid
-    discord_id_int = int(discord_id_str)
-    
-    user_presets = Preset.objects.filter(creator_id=discord_id_int)
+    discord_id_int = int(discord_account.uid)
 
-    if query:
-        user_presets = user_presets.filter(
-            Q(preset_name__icontains=query) |
-            Q(description__icontains=query)
-        )
+    all_user_rolls = SeedLog.objects.filter(creator_id=discord_id_int)
+    total_rolls = all_user_rolls.count()
+
+    favorite_preset_query = all_user_rolls.values('seed_type') \
+        .annotate(roll_count=Count('seed_type')) \
+        .order_by('-roll_count') \
+        .first()
     
+    favorite_preset = favorite_preset_query if favorite_preset_query else "N/A"
+    
+    # --- Robust Sorting Logic ---
+    def parse_timestamp(roll):
+        """
+        Tries to parse a timestamp string. If it fails, returns a
+        fallback date (datetime.min) to sort it as the oldest.
+        """
+        try:
+            return datetime.strptime(roll.timestamp, '%b %d %Y %H:%M:%S')
+        except (ValueError, TypeError):
+            return datetime.min
+
+    all_rolls_list = list(all_user_rolls)
+    
+    # Use the robust parser as the key for sorting
+    sorted_rolls = sorted(
+        all_rolls_list,
+        key=parse_timestamp,
+        reverse=True
+    )
+    
+    recent_rolls = sorted_rolls[:10]
+
+    sort_key = request.GET.get('sort', 'name')
+    order_by_field = SORT_OPTIONS.get(sort_key, 'preset_name')
+    query = request.GET.get('q')
+    user_presets = Preset.objects.filter(creator_id=discord_id_int)
+    if query:
+        user_presets = user_presets.filter(Q(preset_name__icontains=query) | Q(description__icontains=query))
     user_presets = user_presets.order_by(order_by_field)
     
-    silly_things = get_silly_things_list()
-    silly_things_json = json.dumps(silly_things)
-
     context = {
         'presets': user_presets,
-        'silly_things_json': silly_things_json,
         'current_sort': sort_key,
         'search_query': query if query else '',
         'user_discord_id': discord_id_int,
+        'total_rolls': total_rolls,
+        'favorite_preset': favorite_preset,
+        'recent_rolls': recent_rolls,
     }
     return render(request, 'presets/my_presets.html', context)
 
@@ -221,35 +245,81 @@ def preset_delete_view(request, pk):
     context = {'preset': preset}
     return render(request, 'presets/preset_confirm_delete.html', context)
 
-def connect_discord_view(request):
-    return render(request, 'presets/connect_discord.html')
+# --- API / AJAX Views ---
 
-# --- API-style Views for JavaScript ---
-
-def roll_seed_api_view(request, pk):
+@discord_login_required
+def roll_seed_dispatcher_view(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 
     preset = get_object_or_404(Preset, pk=pk)
-    original_flags = preset.flags
-    arguments = preset.arguments
-    final_flags = flag_processor.apply_args(original_flags, arguments)
-    api_url = "https://api.ff6worldscollide.com/api/seed"
-    payload = {"key": settings.WC_API_KEY, "flags": final_flags}
-    headers = {"Content-Type": "application/json"}
+    args_list = [arg.strip() for arg in preset.arguments.split()] if preset.arguments else []
+    
+    local_roll_args = {
+        'practice', 'doors', 'dungeoncrawl', 'doorslite', 'maps', 
+        'mapx', 'lg1', 'lg2', 'ws', 'csi'
+    }
+    
+    discord_account = request.user.socialaccount_set.get(provider='discord')
+    discord_id = int(discord_account.uid)
+    discord_name = discord_account.extra_data.get('username', request.user.username)
 
-    try:
-        response = requests.post(api_url, data=json.dumps(payload), headers=headers, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        seed_url = data.get('url')
-        preset.gen_count += 1
-        preset.save()
-        return JsonResponse({'seed_url': seed_url})
-    except requests.exceptions.RequestException as e:
-        status_code = e.response.status_code if e.response else "N/A"
-        error_message = f"API Error (Status: {status_code})"
-        return JsonResponse({'error': error_message}, status=400)
+    if any(arg in local_roll_args for arg in args_list):
+        task = create_local_seed_task.delay(pk, discord_id, discord_name)
+        return JsonResponse({'method': 'local', 'task_id': task.id})
+    else:
+        final_flags = flag_processor.apply_args(preset.flags, preset.arguments)
+        api_url = "https://api.ff6worldscollide.com/api/seed"
+        payload = {"key": settings.WC_API_KEY, "flags": final_flags}
+        headers = {"Content-Type": "application/json"}
+        try:
+            response = requests.post(api_url, data=json.dumps(payload), headers=headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            seed_url = data.get('url')
+            
+            preset.gen_count += 1
+            preset.save(update_fields=['gen_count'])
+
+            timestamp = datetime.now().strftime('%b %d %Y %H:%M:%S')
+
+
+            SeedLog.objects.create(
+                creator_id=discord_id,
+                creator_name=discord_name,
+                seed_type=preset.preset_name,
+                share_url=seed_url,
+                timestamp=datetime.now().strftime('%b %d %Y %H:%M:%S'),
+                server_name='WebApp'
+            )
+
+            metrics_data = {
+                'creator_id': discord_id,
+                'creator_name': discord_name,
+                'seed_type': preset.preset_name,
+                'share_url': seed_url,
+                'timestamp': timestamp,
+            }
+            write_to_gsheets(metrics_data)
+            
+            return JsonResponse({'method': 'api', 'seed_url': seed_url})
+        except requests.exceptions.RequestException as e:
+            error_message = "The FF6WC API returned an error. Please check your flags."
+            return JsonResponse({'error': error_message}, status=400)
+
+
+def get_local_seed_roll_status_view(request, task_id):
+    """
+    Checks the status of a Celery task and returns the result if complete.
+    """
+    task_result = AsyncResult(task_id)
+    result = {
+        'task_id': task_id,
+        'status': task_result.status,
+        'result': task_result.result if task_result.successful() else str(task_result.result)
+    }
+    return JsonResponse(result)
+
 
 @discord_login_required
 def toggle_feature_view(request, pk):

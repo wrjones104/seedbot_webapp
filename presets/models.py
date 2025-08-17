@@ -1,31 +1,18 @@
 from django.db import models
 from django.db.models.signals import post_delete
-from django.dispatch import receiver              
+from django.dispatch import receiver
+from django.conf import settings
 
 class Preset(models.Model):
-    # It's best to explicitly define a primary key. Since `preset_name` is likely unique,
-    # we'll use it. If it's not unique, we may need to adjust this.
     preset_name = models.CharField(max_length=255, primary_key=True)
-    
-    # Discord IDs are very large numbers, so BigIntegerField is safer than IntegerField.
     creator_id = models.BigIntegerField() 
-    
     creator_name = models.CharField(max_length=255)
-    
-    # The DB stores this as text, so we'll map it to a CharField in Django
-    # to avoid data type errors.
     created_at = models.CharField(max_length=255)
-    
-    # TextField is for longer, potentially multi-line text.
-    # We'll allow these to be blank.
     flags = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     arguments = models.TextField(blank=True, null=True)
-    
-    # BooleanField is perfect for integer columns that act as flags (0 or 1).
     official = models.BooleanField()
     hidden = models.BooleanField()
-    
     gen_count = models.IntegerField(default=0)
 
     class Meta:
@@ -54,15 +41,26 @@ class FeaturedPreset(models.Model):
 
     def __str__(self):
         return self.preset_name
-    
+
+class SeedLog(models.Model):
+    creator_id = models.BigIntegerField()
+    creator_name = models.TextField()
+    seed_type = models.TextField()
+    # random_sprites = models.TextField(blank=True, null=True) # <-- REMOVED THIS LINE
+    share_url = models.TextField(blank=True, null=True)
+    timestamp = models.TextField(primary_key=True)
+    server_name = models.TextField(blank=True, null=True)
+    server_id = models.BigIntegerField(blank=True, null=True)
+    channel_name = models.TextField(blank=True, null=True)
+    channel_id = models.BigIntegerField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'seedlist'
+
 @receiver(post_delete, sender=Preset)
 def delete_featured_preset_on_preset_delete(sender, instance, **kwargs):
-    """
-    When a Preset is deleted, this signal finds and deletes the
-    corresponding FeaturedPreset entry, if one exists.
-    """
     try:
         FeaturedPreset.objects.filter(preset_name=instance.pk).delete()
-        print(f"Cleaned up featured entry for deleted preset: {instance.pk}")
     except Exception as e:
         print(f"Error during featured preset cleanup: {e}")

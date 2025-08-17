@@ -1,11 +1,15 @@
 import requests
 import json
+import subprocess
+import uuid
+from pathlib import Path
+
 from django import forms
 from django.conf import settings
 from .models import Preset
-from profanity import profanity # <-- This is the corrected import
+from profanity import profanity
+from . import flag_processor
 
-# (ARGUMENT_CHOICES list is unchanged)
 ARGUMENT_CHOICES = [
     ('paint', 'Paint'), ('kupo', 'Kupo'), ('loot', 'Loot'), ('fancygau', 'Fancy Gau'),
     ('hundo', 'Hundo'), ('objectives', 'Objectives'), ('nospoilers', 'No Spoilers'),
@@ -17,6 +21,19 @@ ARGUMENT_CHOICES = [
     ('apts', 'APTS'), ('flagsonly', 'Flags Only'), ('steve', 'Steve'), ('zozo', 'Zozo'),
     ('desc', 'Desc'), ('lg1', 'LG1'), ('lg2', 'LG2'), ('ws', 'WS'), ('csi', 'CSI')
 ]
+
+LOCAL_ROLL_ARGS = {
+    'practice', 'doors', 'dungeoncrawl', 'doorslite', 'maps', 
+    'mapx', 'lg1', 'lg2', 'ws', 'csi'
+}
+
+DIR_MAP = {
+    'practice': 'WorldsCollide_practice', 'doors': 'WorldsCollide_Door_Rando',
+    'dungeoncrawl': 'WorldsCollide_Door_Rando', 'doorslite': 'WorldsCollide_Door_Rando',
+    'maps': 'WorldsCollide_Door_Rando', 'mapx': 'WorldsCollide_Door_Rando',
+    'lg1': 'WorldsCollide_location_gating1', 'lg2': 'WorldsCollide_location_gating1',
+    'ws': 'WorldsCollide_shuffle_by_world', 'csi': 'WorldsCollide_shuffle_by_world',
+}
 
 class PresetForm(forms.ModelForm):
     arguments = forms.MultipleChoiceField(
@@ -40,42 +57,82 @@ class PresetForm(forms.ModelForm):
         self.instance.arguments = ' '.join(selected_args)
         return super().save(commit=commit)
 
+    def _validate_flags_locally(self, flags, arguments):
+        """Uses a local wc.py script to validate flags."""
+        final_flags = flag_processor.apply_args(flags, ' '.join(arguments))
+        
+        project_root = settings.BASE_DIR.parent
+        seedbot2000_dir = project_root / 'seedbot2000'
+        main_wc_dir = seedbot2000_dir / 'WorldsCollide'
+        
+        script_dir_name = 'WorldsCollide'
+        for arg in arguments:
+            if arg in DIR_MAP:
+                script_dir_name = DIR_MAP[arg]
+                break
+        
+        script_dir = seedbot2000_dir / script_dir_name
+        wc_script = script_dir / 'wc.py'
+        input_smc = main_wc_dir / 'ff3.smc'
+        
+        # Use a temporary filename for validation
+        temp_filename = f"validation_{uuid.uuid4().hex[:8]}.smc"
+        temp_output_smc = main_wc_dir / 'seeds' / temp_filename
+
+        command = ["python3", str(wc_script), "-i", str(input_smc), "-o", str(temp_output_smc)]
+        command.extend(final_flags.split())
+
+        try:
+            subprocess.run(
+                command, cwd=script_dir, capture_output=True, text=True,
+                timeout=120, check=True
+            )
+        except subprocess.CalledProcessError as e:
+            error_details = e.stderr or e.stdout
+            self.add_error('flags', f"Invalid Flags (local validation): {error_details}")
+        finally:
+            # Clean up temporary files
+            temp_output_smc.unlink(missing_ok=True)
+            temp_output_smc.with_suffix('.txt').unlink(missing_ok=True)
+
+    def _validate_flags_api(self, flags):
+        """Uses the public API to validate flags."""
+        api_url = "https://api.ff6worldscollide.com/api/seed"
+        payload = {"key": settings.WC_API_KEY, "flags": flags}
+        headers = {"Content-Type": "application/json"}
+        try:
+            response = requests.post(api_url, data=json.dumps(payload), headers=headers, timeout=30)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            error_message = "These flags are invalid."
+            if e.response:
+                try:
+                    api_error = e.response.json().get('error', 'API returned an error.')
+                    error_message = f"Invalid Flags (API validation): {api_error}"
+                except json.JSONDecodeError:
+                    error_message = "Invalid Flags: The API returned an unreadable error."
+            self.add_error('flags', error_message)
+
     def clean(self):
         cleaned_data = super().clean()
         name = cleaned_data.get("preset_name")
         description = cleaned_data.get("description")
         flags = cleaned_data.get("flags")
+        arguments = cleaned_data.get("arguments", [])
 
-        # 1. Check preset name for profanity (fast check)
-        if name and profanity.contains_profanity(name): # <-- Corrected function call
-            self.add_error('preset_name', "Watch your mouth, dirtbag!.")
-
-        # 2. Check description for profanity (fast check)
-        if description and profanity.contains_profanity(description): # <-- Corrected function call
+        if name and profanity.contains_profanity(name):
+            self.add_error('preset_name', "Watch your mouth, dirtbag!")
+        if description and profanity.contains_profanity(description):
             self.add_error('description', "Watch your mouth, dirtbag!")
-            
         if self.errors:
             return cleaned_data
 
-        # 3. If everything is clean so far, check the flags via API (slow check)
         if flags:
-            print(f"Validating flags: {flags}")
-            api_url = "https://api.ff6worldscollide.com/api/seed"
-            payload = {"key": settings.WC_API_KEY, "flags": flags}
-            headers = {"Content-Type": "application/json"}
-
-            try:
-                response = requests.post(api_url, data=json.dumps(payload), headers=headers, timeout=30)
-                response.raise_for_status()
-            except requests.exceptions.RequestException as e:
-                error_message = "These flags are invalid."
-                if e.response:
-                    try:
-                        api_error = e.response.json().get('error', 'API returned an error.')
-                        error_message = f"Invalid Flags: {api_error}"
-                    except json.JSONDecodeError:
-                        error_message = "Invalid Flags: The API returned an unreadable error."
-                self.add_error('flags', error_message)
+            # Decide which validation method to use
+            if any(arg in LOCAL_ROLL_ARGS for arg in arguments):
+                self._validate_flags_locally(flags, arguments)
+            else:
+                self._validate_flags_api(flags)
         
         return cleaned_data
 

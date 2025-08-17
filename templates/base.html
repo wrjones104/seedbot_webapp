@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SeedBot Presets{% endblock %}</title>
+    <title>{% block title %}SeedBot{% endblock %}</title>
     
     <link rel="icon" type="image/png" href="{% static 'images/seedbot_new.png' %}">
 
@@ -19,14 +19,14 @@
             <li>
                 <a href="{% url 'preset-list' %}" class="secondary">
                     <img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 32px; vertical-align: middle; margin-right: 10px;">
-                    <strong>SeedBot Presets</strong>
+                    <strong>SeedBot</strong>
                 </a>
             </li>
         </ul>
         <ul>
             <li><a href="{% url 'preset-list' %}">All Presets</a></li>
             {% if user.is_authenticated %}
-                <li><a href="{% url 'my-presets' %}">My Presets</a></li>
+                <li><a href="{% url 'my-presets' %}">My Profile</a></li>
                 <li><a href="#" role="button" onclick="openModal('logout-modal')">Logout</a></li>
             {% else %}
                 <li><a href="{% url 'account_login' %}" role="button">Login</a></li>
@@ -85,105 +85,123 @@
     <script>
         const SILLY_THINGS = {{ silly_things_json|default:'[]'|safe }};
 
-        // Modal control functions
         function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.showModal();
-            }
+            document.getElementById(modalId)?.showModal();
         }
         function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.close();
-            }
+            document.getElementById(modalId)?.close();
         }
 
-        // AJAX function for rolling a seed
-        async function rollSeed(apiUrl) {
+        function pollTaskStatus(statusUrl) {
             const modal = document.getElementById('seed-roll-modal');
             const header = document.getElementById('seed-roll-modal-header');
             const content = document.getElementById('seed-roll-modal-content');
             const footer = document.getElementById('seed-roll-modal-footer');
-            const randomLine = SILLY_THINGS.length > 0 ? SILLY_THINGS[Math.floor(Math.random() * SILLY_THINGS.length)] : "Rolling your seed...";
-            const capitalizedLine = randomLine.charAt(0).toUpperCase() + randomLine.slice(1);
 
-            header.innerText = 'Rolling Seed...';
-            content.innerHTML = `<img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;"><p><strong>${capitalizedLine}</strong></p><progress indeterminate></progress>`;
-            footer.style.display = 'none';
-            openModal('seed-roll-modal');
-
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
-                });
-                const data = await response.json();
-
-                if (response.ok) {
-                    header.innerText = 'Seed Generated!';
-                    content.innerHTML = `<p>Your seed is ready!</p><h4><a href="${data.seed_url}" target="_blank">${data.seed_url}</a></h4>`;
-                } else {
-                    header.innerText = 'An Error Occurred';
-                    content.innerHTML = `<p>Could not generate seed.</p><p><small>${data.error || 'Unknown error.'}</small></p>`;
-                }
-            } catch (error) {
-                header.innerText = 'An Error Occurred';
-                content.innerHTML = `<p>A network error occurred while trying to roll the seed.</p>`;
-            } finally {
-                footer.style.display = 'block';
-            }
+            const interval = setInterval(() => {
+                fetch(statusUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'SUCCESS') {
+                            clearInterval(interval);
+                            header.innerText = 'Seed Generated!';
+                            content.innerHTML = `<p>Your seed is ready! It will download automatically.</p><h4><a href="${data.result}" target="_blank" download>Download Seed File</a></h4>`;
+                            footer.style.display = 'block';
+                            window.location.href = data.result;
+                        } else if (data.status === 'FAILURE') {
+                            clearInterval(interval);
+                            header.innerText = 'An Error Occurred';
+                            content.innerHTML = `<p>Could not generate seed.</p><p><small>${data.result || 'Unknown error.'}</small></p>`;
+                            footer.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        clearInterval(interval);
+                        console.error('Error polling task status:', error);
+                        header.innerText = 'An Error Occurred';
+                        content.innerHTML = `<p>A network error occurred while trying to check the seed status.</p>`;
+                        footer.style.display = 'block';
+                    });
+            }, 3000);
         }
 
-        // Helper function to show/hide the featured presets header
         function checkFeaturedVisibility() {
             const featuredGrid = $('#featured-grid');
             const featuredHeader = $('#featured-header');
             const featuredHr = $('#featured-hr');
-
-            if (featuredGrid && featuredHeader && featuredHr) {
-                if (featuredGrid.children('article').length > 0) {
-                    featuredHeader.show();
-                    featuredHr.show();
-                } else {
-                    featuredHeader.hide();
-                    featuredHr.hide();
-                }
+            if (featuredGrid.children('article').length > 0) {
+                featuredHeader.show();
+                featuredHr.show();
+            } else {
+                featuredHeader.hide();
+                featuredHr.hide();
             }
         }
 
-        // jQuery-dependent scripts
         jQuery(document).ready(function($) {
-            // Initializer for Select2 widgets
-            $('#id_arguments').select2({
-                placeholder: 'Select arguments',
-                allowClear: true
+            $('#id_arguments').select2({ placeholder: 'Select arguments', allowClear: true });
+
+            $(document).on('click', '.js-roll-seed-dispatcher', function() {
+                const button = $(this);
+                const dispatcherUrl = button.data('url');
+                const statusUrlBase = button.data('status-url-base');
+                
+                const modal = document.getElementById('seed-roll-modal');
+                const header = document.getElementById('seed-roll-modal-header');
+                const content = document.getElementById('seed-roll-modal-content');
+                const footer = document.getElementById('seed-roll-modal-footer');
+                const randomLine = SILLY_THINGS.length > 0 ? SILLY_THINGS[Math.floor(Math.random() * SILLY_THINGS.length)] : "Rolling your seed...";
+                
+                header.innerText = 'Rolling Seed...';
+                content.innerHTML = `<img src="{% static 'images/seedbot_new.png' %}" alt="SeedBot" style="height: 64px;"><p><strong>${randomLine.charAt(0).toUpperCase() + randomLine.slice(1)}</strong></p><progress indeterminate></progress>`;
+                footer.style.display = 'none';
+                openModal('seed-roll-modal');
+
+                const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+                fetch(dispatcherUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 403) throw new Error('Please log in to roll a seed.');
+                        throw new Error('Server error when trying to roll the seed.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.method === 'local') {
+                        const statusUrl = statusUrlBase.replace('TASK_ID_PLACEHOLDER', data.task_id);
+                        pollTaskStatus(statusUrl);
+                    } else if (data.method === 'api') {
+                        header.innerText = 'Seed Generated!';
+                        content.innerHTML = `<p>Your seed is ready!</p><h4><a href="${data.seed_url}" target="_blank">${data.seed_url}</a></h4>`;
+                        footer.style.display = 'block';
+                    } else if (data.error) {
+                         header.innerText = 'An Error Occurred';
+                         content.innerHTML = `<p>${data.error}</p>`;
+                         footer.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    header.innerText = 'An Error Occurred';
+                    content.innerHTML = `<p>${error.message}</p>`;
+                    footer.style.display = 'block';
+                });
             });
 
-            // Event listener for all "Roll Seed" buttons
-            $('.js-roll-seed-btn').on('click', function() {
-                const rollUrl = $(this).data('url');
-                if (rollUrl) {
-                    rollSeed(rollUrl);
-                }
-            });
-            
-            // Event listener for the "Save Preset" link on the form page
             $('#submit-form-link').on('click', function(e) {
                 e.preventDefault();
                 openModal('loading-modal');
                 $('#preset-form').submit();
             });
 
-            // Event listener for the feature/pin buttons
             $(document).on('click', '.js-feature-btn', function() {
                 const button = $(this);
                 const featureUrl = button.data('url');
                 const card = button.closest('article');
                 const csrfToken = $('[name=csrfmiddlewaretoken]').val();
-
                 fetch(featureUrl, {
                     method: 'POST',
                     headers: { 'X-CSRFToken': csrfToken }
@@ -207,13 +225,9 @@
                     }
                 });
             });
-
-            // Call the visibility check on initial page load
             checkFeaturedVisibility();
         });
     </script>
-
-    {% block scripts %}
-    {% endblock %}
+    {% block scripts %}{% endblock %}
 </body>
 </html>
