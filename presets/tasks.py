@@ -15,8 +15,6 @@ from .models import Preset, SeedLog
 from . import flag_processor
 from .utils import write_to_gsheets
 
-# NOTE: All complex sys.path and johnnydmad imports have been removed for stability.
-
 class RollException(Exception):
     """Custom exception for seed rolling errors."""
     def __init__(self, msg, filename, sperror):
@@ -26,7 +24,7 @@ class RollException(Exception):
         super().__init__(self.msg)
 
 @shared_task(bind=True)
-def create_local_seed_task(self, preset_pk, user_id, user_name):
+def create_local_seed_task(self, preset_pk, discord_id, user_name):
     preset = Preset.objects.get(pk=preset_pk)
     final_flags = flag_processor.apply_args(preset.flags, preset.arguments)
     unique_id = str(uuid.uuid4())[:8]
@@ -83,7 +81,6 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
                 if 'ctunes' in args_list:
                     jdm_type = "chaos"
                 
-                # --- Call our new, stable runner script via subprocess ---
                 runner_script = seedbot2000_dir / 'run_johnnydmad.py'
                 jdm_command = [
                     "python3", str(runner_script),
@@ -116,11 +113,14 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
             share_url = f'{settings.MEDIA_URL}{zip_filename}'
             timestamp = datetime.now().strftime('%b %d %Y %H:%M:%S')
             SeedLog.objects.create(
-                creator_id=user_id, creator_name=user_name,
-                seed_type=preset.preset_name, share_url=share_url,
-                timestamp=timestamp, server_name='WebApp'
+                creator_id=discord_id,
+                creator_name=user_name,
+                seed_type=preset.preset_name,
+                share_url=share_url,
+                timestamp=timestamp,
+                server_name='WebApp'
             )
-            metrics_data = { 'creator_id': user_id, 'creator_name': user_name, 'seed_type': preset.preset_name, 'share_url': share_url, 'timestamp': timestamp, }
+            metrics_data = { 'creator_id': discord_id, 'creator_name': user_name, 'seed_type': preset.preset_name, 'share_url': share_url, 'timestamp': timestamp, }
             write_to_gsheets(metrics_data)
 
             return share_url

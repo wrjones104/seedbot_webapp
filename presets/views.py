@@ -239,7 +239,6 @@ def preset_delete_view(request, pk):
 
 # --- API / AJAX Views ---
 
-@discord_login_required
 def roll_seed_dispatcher_view(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method'}, status=405)
@@ -252,12 +251,16 @@ def roll_seed_dispatcher_view(request, pk):
         'mapx', 'lg1', 'lg2', 'ws', 'csi', 'tunes', 'ctunes'
     }
     
-    discord_account = request.user.socialaccount_set.get(provider='discord')
-    discord_id = int(discord_account.uid)
-    discord_name = discord_account.extra_data.get('username', request.user.username)
+    if request.user.is_authenticated:
+        social_account = request.user.socialaccount_set.get(provider='discord')
+        discord_id = int(social_account.uid)
+        user_name = social_account.extra_data.get('username', request.user.username)
+    else:
+        discord_id = 000000000000000000 
+        user_name = "Anonymous"
 
     if any(arg in local_roll_args for arg in args_list):
-        task = create_local_seed_task.delay(pk, discord_id, discord_name)
+        task = create_local_seed_task.delay(pk, discord_id, user_name)
         return JsonResponse({'method': 'local', 'task_id': task.id})
     else:
         final_flags = flag_processor.apply_args(preset.flags, preset.arguments)
@@ -276,13 +279,13 @@ def roll_seed_dispatcher_view(request, pk):
             timestamp = datetime.now().strftime('%b %d %Y %H:%M:%S')
 
             SeedLog.objects.create(
-                creator_id=discord_id, creator_name=discord_name,
+                creator_id=discord_id, creator_name=user_name,
                 seed_type=preset.preset_name, share_url=seed_url,
                 timestamp=timestamp, server_name='WebApp'
             )
             
             metrics_data = {
-                'creator_id': discord_id, 'creator_name': discord_name,
+                'creator_id': discord_id, 'creator_name': user_name,
                 'seed_type': preset.preset_name, 'share_url': seed_url,
                 'timestamp': timestamp,
             }
@@ -294,10 +297,6 @@ def roll_seed_dispatcher_view(request, pk):
             return JsonResponse({'error': error_message}, status=400)
 
 def get_local_seed_roll_status_view(request, task_id):
-    """
-    Checks the status of a Celery task and returns the result,
-    including custom progress states.
-    """
     task_result = AsyncResult(task_id)
     response_data = {
         'task_id': task_id,

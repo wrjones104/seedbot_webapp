@@ -1,7 +1,6 @@
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from django.conf import settings
 
 class Preset(models.Model):
     preset_name = models.CharField(max_length=255, primary_key=True)
@@ -42,11 +41,12 @@ class FeaturedPreset(models.Model):
     def __str__(self):
         return self.preset_name
 
+# --- NEW MODEL MAPPED TO EXISTING TABLE ---
 class SeedLog(models.Model):
+    # This model maps to the existing 'seedlist' table in seeDBot.sqlite
     creator_id = models.BigIntegerField()
     creator_name = models.TextField()
     seed_type = models.TextField()
-    # random_sprites = models.TextField(blank=True, null=True) # <-- REMOVED THIS LINE
     share_url = models.TextField(blank=True, null=True)
     timestamp = models.TextField(primary_key=True)
     server_name = models.TextField(blank=True, null=True)
@@ -60,7 +60,12 @@ class SeedLog(models.Model):
 
 @receiver(post_delete, sender=Preset)
 def delete_featured_preset_on_preset_delete(sender, instance, **kwargs):
+    """
+    When a Preset is deleted, this signal finds and deletes the
+    corresponding FeaturedPreset entry, if one exists.
+    """
     try:
         FeaturedPreset.objects.filter(preset_name=instance.pk).delete()
+        print(f"Cleaned up featured entry for deleted preset: {instance.pk}")
     except Exception as e:
         print(f"Error during featured preset cleanup: {e}")
