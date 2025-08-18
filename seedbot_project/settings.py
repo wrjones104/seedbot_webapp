@@ -12,6 +12,7 @@ WC_API_KEY = os.getenv('new_api_key')
 BOT_TOKEN = os.getenv('DISCORD_TOKEN')
 ENV_TYPE = os.getenv('ENVIRONMENT', 'dev')
 
+# --- Environment-Specific Settings ---
 if ENV_TYPE == "prod":
     DEBUG = False
     ALLOWED_HOSTS = ['seedbot.net', 'www.seedbot.net']
@@ -19,15 +20,16 @@ if ENV_TYPE == "prod":
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    # Celery settings for Production
     CELERY_BROKER_URL = 'redis://localhost:6379/0'
     CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    MEDIA_ROOT = '/var/www/seedbot_media/seeds/' # Production media path
 else:
     DEBUG = True
     ALLOWED_HOSTS = []
-    # Celery settings for Development
     CELERY_BROKER_URL = 'redis://localhost:6379/0'
     CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    # Development media path
+    MEDIA_ROOT = BASE_DIR.parent / 'seedbot2000' / 'WorldsCollide' / 'seeds'
 
 
 # --- Celery Configuration Options ---
@@ -102,8 +104,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
-# This path now correctly points to where the Celery task is saving the seeds.
-MEDIA_ROOT = BASE_DIR.parent / 'seedbot2000' / 'WorldsCollide' / 'seeds'
+# MEDIA_ROOT is now defined in the environment-specific section above
 
 
 # --- Django-Allauth & Sites Framework ---

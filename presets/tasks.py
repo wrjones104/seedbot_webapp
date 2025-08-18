@@ -21,6 +21,9 @@ class RollException(Exception):
 
 @shared_task(bind=True)
 def create_local_seed_task(self, preset_pk, user_id, user_name):
+    """
+    A Celery task to generate a seed locally, zip the output, and clean up.
+    """
     try:
         preset = Preset.objects.get(pk=preset_pk)
     except Preset.DoesNotExist:
@@ -29,31 +32,49 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
     final_flags = flag_processor.apply_args(preset.flags, preset.arguments)
     unique_id = str(uuid.uuid4())[:8]
     filename_base = f"{preset.preset_name.replace(' ', '_').replace('/', '-')}_{unique_id}"
+
+    # --- Corrected Pathing Logic ---
     project_root = settings.BASE_DIR.parent
     seedbot2000_dir = project_root / 'seedbot2000'
+    
+    # Define the static input and output paths
     main_wc_dir = seedbot2000_dir / 'WorldsCollide'
-    output_dir = main_wc_dir / 'seeds'
+    input_smc = main_wc_dir / 'ff3.smc'
+    output_dir = Path(settings.MEDIA_ROOT)
     output_smc = output_dir / f"{filename_base}.smc"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Determine which wc.py script to RUN based on arguments
     args_list = preset.arguments.split() if preset.arguments else []
     dir_map = {
-        'practice': 'WorldsCollide_practice', 'doors': 'WorldsCollide_Door_Rando',
-        'dungeoncrawl': 'WorldsCollide_Door_Rando', 'doorslite': 'WorldsCollide_Door_Rando',
-        'maps': 'WorldsCollide_Door_Rando', 'mapx': 'WorldsCollide_Door_Rando',
-        'lg1': 'WorldsCollide_location_gating1', 'lg2': 'WorldsCollide_location_gating1',
-        'ws': 'WorldsCollide_shuffle_by_world', 'csi': 'WorldsCollide_shuffle_by_world',
+        'practice': 'WorldsCollide_practice',
+        'doors': 'WorldsCollide_Door_Rando', 'dungeoncrawl': 'WorldsCollide_Door_Rando',
+        'doorslite': 'WorldsCollide_Door_Rando', 'maps': 'WorldsCollide_Door_Rando',
+        'mapx': 'WorldsCollide_Door_Rando', 'lg1': 'WorldsCollide_location_gating1',
+        'lg2': 'WorldsCollide_location_gating1', 'ws': 'WorldsCollide_shuffle_by_world',
+        'csi': 'WorldsCollide_shuffle_by_world',
     }
-    script_dir_name = 'WorldsCollide'
+    
+    script_dir_name = 'WorldsCollide' # Default script directory
     for arg in args_list:
         if arg in dir_map:
             script_dir_name = dir_map[arg]
             break
+            
+    # The path to the script and the working directory for the subprocess
     script_dir = seedbot2000_dir / script_dir_name
     wc_script = script_dir / 'wc.py'
-    command = ["python3", str(wc_script), "-i", str(main_wc_dir / 'ff3.smc'), "-o", str(output_smc)]
-    command.extend(final_flags.split())
     
+    command = [
+        "python3",
+        str(wc_script),
+        "-i", str(input_smc),
+        "-o", str(output_smc)
+    ]
+    command.extend(final_flags.split())
+
     try:
+        # Run the specific wc.py from its own directory
         subprocess.run(
             command, cwd=script_dir, capture_output=True, text=True,
             timeout=120, check=True
@@ -66,8 +87,10 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
             zf.write(output_smc, arcname=output_smc.name)
             if txt_path.exists():
                 zf.write(txt_path, arcname=txt_path.name)
+        
         output_smc.unlink()
-        if txt_path.exists(): txt_path.unlink()
+        if txt_path.exists():
+            txt_path.unlink()
 
         preset.gen_count += 1
         preset.save(update_fields=['gen_count'])
@@ -75,13 +98,12 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
         share_url = f'{settings.MEDIA_URL}{zip_filename}'
         timestamp = datetime.now().strftime('%b %d %Y %H:%M:%S')
 
-
         SeedLog.objects.create(
             creator_id=user_id,
             creator_name=user_name,
             seed_type=preset.preset_name,
             share_url=share_url,
-            timestamp=datetime.now().strftime('%b %d %Y %H:%M:%S'),
+            timestamp=timestamp,
             server_name='WebApp'
         )
 

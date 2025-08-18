@@ -48,10 +48,11 @@
                         <td>{{ roll.timestamp }}</td>
                         <td>
                             {% if roll.share_url %}
-                                {% if roll.share_url|slice:":6" == '/media/' %}
-                                    <a href="{{ roll.share_url }}" download>Local Download</a>
+                                {# Check the first 7 characters for '/media/' #}
+                                {% if roll.share_url|slice:":7" == '/media/' %}
+                                    <a href="{{ roll.share_url }}" download>Download</a>
                                 {% else %}
-                                    <a href="{{ roll.share_url }}" target="_blank">API Link</a>
+                                    <a href="{{ roll.share_url }}" target="_blank">Link</a>
                                 {% endif %}
                             {% endif %}
                         </td>
