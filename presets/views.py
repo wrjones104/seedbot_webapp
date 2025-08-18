@@ -77,19 +77,12 @@ def write_to_gsheets(metrics_data):
 def preset_list_view(request):
     sort_key = request.GET.get('sort', DEFAULT_SORT)
     order_by_field = SORT_OPTIONS.get(sort_key, DEFAULT_SORT)
-    
     featured_preset_pks = list(FeaturedPreset.objects.values_list('preset_name', flat=True))
     featured_presets = Preset.objects.filter(pk__in=featured_preset_pks).order_by(order_by_field)
     queryset = Preset.objects.exclude(pk__in=featured_preset_pks).exclude(preset_name='').order_by(order_by_field)
-    
     query = request.GET.get('q')
     if query:
-        queryset = queryset.filter(
-            Q(preset_name__icontains=query) |
-            Q(description__icontains=query) |
-            Q(creator_name__icontains=query)
-        )
-        
+        queryset = queryset.filter(Q(preset_name__icontains=query) | Q(description__icontains=query) | Q(creator_name__icontains=query))
     is_race_admin = False
     user_discord_id = None
     if request.user.is_authenticated:
@@ -99,19 +92,9 @@ def preset_list_view(request):
             is_race_admin = user_is_race_admin(user_discord_id)
         except (SocialAccount.DoesNotExist):
             pass
-
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
-
-    context = {
-        'featured_presets': featured_presets,
-        'presets': queryset,
-        'search_query': query if query else '',
-        'user_discord_id': user_discord_id,
-        'silly_things_json': silly_things_json,
-        'current_sort': sort_key,
-        'is_race_admin': is_race_admin, 
-    }
+    context = {'featured_presets': featured_presets, 'presets': queryset, 'search_query': query if query else '', 'user_discord_id': user_discord_id, 'silly_things_json': silly_things_json, 'current_sort': sort_key, 'is_race_admin': is_race_admin, }
     return render(request, 'presets/preset_list.html', context)
 
 def preset_detail_view(request, pk):
@@ -124,43 +107,26 @@ def preset_detail_view(request, pk):
                 is_owner = True
         except SocialAccount.DoesNotExist:
             pass
-
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
-    context = {
-        'preset': preset,
-        'is_owner': is_owner,
-        'silly_things_json': silly_things_json,
-    }
+    context = {'preset': preset, 'is_owner': is_owner, 'silly_things_json': silly_things_json, }
     return render(request, 'presets/preset_detail.html', context)
 
 @discord_login_required
 def my_presets_view(request):
     discord_account = request.user.socialaccount_set.get(provider='discord')
     discord_id_int = int(discord_account.uid)
-
-    # --- ADDED: Calculate is_race_admin for the logged in user ---
     is_race_admin = user_is_race_admin(discord_id_int)
-
-    # --- STATS CALCULATION ---
     all_user_rolls = SeedLog.objects.filter(creator_id=discord_id_int)
     total_rolls = all_user_rolls.count()
     favorite_preset_query = all_user_rolls.values('seed_type').annotate(roll_count=Count('seed_type')).order_by('-roll_count').first()
     favorite_preset = favorite_preset_query if favorite_preset_query else "N/A"
-    
-    # ... (Sorting logic for recent_rolls is unchanged) ...
     all_rolls_list = list(all_user_rolls)
     try:
-        sorted_rolls = sorted(
-            all_rolls_list,
-            key=lambda roll: datetime.strptime(roll.timestamp, '%b %d %Y %H:%M:%S'),
-            reverse=True
-        )
+        sorted_rolls = sorted(all_rolls_list, key=lambda roll: datetime.strptime(roll.timestamp, '%b %d %Y %H:%M:%S'), reverse=True)
     except ValueError:
         sorted_rolls = all_rolls_list
     recent_rolls = sorted_rolls[:10]
-
-    # --- My Presets List (existing logic) ---
     sort_key = request.GET.get('sort', 'name')
     order_by_field = SORT_OPTIONS.get(sort_key, 'preset_name')
     query = request.GET.get('q')
@@ -168,30 +134,15 @@ def my_presets_view(request):
     if query:
         user_presets = user_presets.filter(Q(preset_name__icontains=query) | Q(description__icontains=query))
     user_presets = user_presets.order_by(order_by_field)
-
-    # --- ADDED: Get silly things for the template ---
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
-    
-    context = {
-        'presets': user_presets,
-        'current_sort': sort_key,
-        'search_query': query if query else '',
-        'user_discord_id': discord_id_int,
-        'total_rolls': total_rolls,
-        'favorite_preset': favorite_preset,
-        'recent_rolls': recent_rolls,
-        # --- ADDED: Missing context variables ---
-        'is_race_admin': is_race_admin,
-        'silly_things_json': silly_things_json,
-    }
+    context = {'presets': user_presets, 'current_sort': sort_key, 'search_query': query if query else '', 'user_discord_id': discord_id_int, 'total_rolls': total_rolls, 'favorite_preset': favorite_preset, 'recent_rolls': recent_rolls, 'is_race_admin': is_race_admin, 'silly_things_json': silly_things_json, }
     return render(request, 'presets/my_presets.html', context)
 
 @discord_login_required 
 def preset_create_view(request):
     discord_account = request.user.socialaccount_set.get(provider='discord')
     is_official = user_is_official(discord_account.uid)
-
     if request.method == 'POST':
         form = PresetForm(request.POST, is_official=is_official)
         if form.is_valid():
@@ -202,20 +153,20 @@ def preset_create_view(request):
             return redirect('my-presets')
     else:
         form = PresetForm(is_official=is_official)
-
-    context = {'form': form, 'preset': None}
+    
+    # Add silly_things_json to the context
+    silly_things = get_silly_things_list()
+    silly_things_json = json.dumps(silly_things)
+    context = {'form': form, 'preset': None, 'silly_things_json': silly_things_json}
     return render(request, 'presets/preset_form.html', context)
 
 @discord_login_required
 def preset_update_view(request, pk):
     preset = get_object_or_404(Preset, pk=pk)
     discord_account = request.user.socialaccount_set.get(provider='discord')
-    
     if preset.creator_id != int(discord_account.uid):
         raise PermissionDenied
-
     is_official = user_is_official(discord_account.uid)
-
     if request.method == 'POST':
         form = PresetForm(request.POST, instance=preset, is_official=is_official)
         if form.is_valid():
@@ -224,21 +175,21 @@ def preset_update_view(request, pk):
     else:
         form = PresetForm(instance=preset, is_official=is_official)
 
-    context = {'form': form, 'preset': preset}
+    # Add silly_things_json to the context
+    silly_things = get_silly_things_list()
+    silly_things_json = json.dumps(silly_things)
+    context = {'form': form, 'preset': preset, 'silly_things_json': silly_things_json}
     return render(request, 'presets/preset_form.html', context)
 
 @discord_login_required
 def preset_delete_view(request, pk):
     preset = get_object_or_404(Preset, pk=pk)
     discord_account = request.user.socialaccount_set.get(provider='discord')
-    
     if preset.creator_id != int(discord_account.uid):
         raise PermissionDenied
-
     if request.method == 'POST':
         preset.delete()
         return redirect('my-presets')
-
     context = {'preset': preset}
     return render(request, 'presets/preset_confirm_delete.html', context)
 
