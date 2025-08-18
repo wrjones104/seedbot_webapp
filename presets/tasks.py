@@ -33,10 +33,6 @@ class RollException(Exception):
 
 @shared_task(bind=True)
 def create_local_seed_task(self, preset_pk, user_id, user_name):
-    """
-    Generates a seed in a temporary directory, moves the final zip to the
-    media root, and cleans up intermediate files.
-    """
     preset = Preset.objects.get(pk=preset_pk)
     final_flags = flag_processor.apply_args(preset.flags, preset.arguments)
     unique_id = str(uuid.uuid4())[:8]
@@ -76,7 +72,6 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
         command.extend(final_flags.split())
 
         try:
-            # --- Step 1: Generate the base seed ---
             self.update_state(state='PROGRESS', meta={'status': 'Generating Seed...'})
             subprocess.run(
                 command, cwd=script_dir, capture_output=True,
@@ -86,35 +81,32 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
             music_was_randomized = False
             jdm_type = "standard"
 
-            # Step 2: Conditionally Randomize Music
             if 'tunes' in args_list or 'ctunes' in args_list:
-                # --- NEW: Report progress before starting tunes ---
                 self.update_state(state='PROGRESS', meta={'status': 'Applying Tunes...'})
-                
                 music_was_randomized = True
                 music_log_path = temp_path / f"{filename_base}_spoiler.txt"
                 
                 if 'ctunes' in args_list:
                     jdm_type = "chaos"
                 
-                original_cwd = os.getcwd()
-                try:
-                    os.chdir(settings.BASE_DIR / 'johnnydmad')
-                    asyncio.run(johnnydmad_webapp(
-                        c=jdm_type,
-                        input_smc_path=str(output_smc),
-                        output_smc_path=str(output_smc),
-                        spoiler_log_path=str(music_log_path)
-                    ))
-                finally:
-                    os.chdir(original_cwd)
+                # --- Call our new, stable runner script via subprocess ---
+                runner_script = seedbot2000_dir / 'run_johnnydmad.py'
+                jdm_command = [
+                    "python3", str(runner_script),
+                    "--type", jdm_type,
+                    "--input", str(output_smc),
+                    "--output", str(output_smc),
+                    "--spoiler", str(music_log_path)
+                ]
+                subprocess.run(
+                    jdm_command, capture_output=True, encoding='utf-8',
+                    timeout=60, check=True
+                )
             
-            # --- Step 3: Zip all the files ---
             self.update_state(state='PROGRESS', meta={'status': 'Packaging Seed...'})
             zip_filename = f"{filename_base}.zip"
             original_log_path = temp_path / f"{filename_base}.txt"
             zip_path = temp_path / zip_filename
-
             with zipfile.ZipFile(zip_path, 'w') as zf:
                 zf.write(output_smc, arcname=f"{jdm_type}_{filename_base}.smc")
                 if original_log_path.exists():
@@ -122,11 +114,9 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
                 if music_was_randomized and music_log_path.exists():
                     zf.write(music_log_path, arcname=f"{jdm_type}_{filename_base}_music_swaps.txt")
             
-            # Step 4: Move the final zip file to its permanent location
             final_destination = Path(settings.MEDIA_ROOT) / zip_filename
             shutil.move(zip_path, final_destination)
-
-            # Step 5: Log and return
+            
             preset.gen_count += 1
             preset.save(update_fields=['gen_count'])
             share_url = f'{settings.MEDIA_URL}{zip_filename}'
@@ -136,17 +126,13 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
                 seed_type=preset.preset_name, share_url=share_url,
                 timestamp=timestamp, server_name='WebApp'
             )
-            metrics_data = {
-                'creator_id': user_id, 'creator_name': user_name,
-                'seed_type': preset.preset_name, 'share_url': share_url,
-                'timestamp': timestamp,
-            }
+            metrics_data = { 'creator_id': user_id, 'creator_name': user_name, 'seed_type': preset.preset_name, 'share_url': share_url, 'timestamp': timestamp, }
             write_to_gsheets(metrics_data)
 
             return share_url
 
         except Exception as e:
-            log_path = settings.BASE_DIR / 'debug_task.log'
+            log_path = Path('/tmp/debug_task.log')
             err_msg = f"An error occurred: {str(e)}"
             with open(log_path, 'a', encoding='utf-8') as f:
                 f.write(f"\n--- Task Failed: {datetime.now()} ---\n")
