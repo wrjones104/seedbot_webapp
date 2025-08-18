@@ -139,38 +139,28 @@ def my_presets_view(request):
     discord_account = request.user.socialaccount_set.get(provider='discord')
     discord_id_int = int(discord_account.uid)
 
+    # --- ADDED: Calculate is_race_admin for the logged in user ---
+    is_race_admin = user_is_race_admin(discord_id_int)
+
+    # --- STATS CALCULATION ---
     all_user_rolls = SeedLog.objects.filter(creator_id=discord_id_int)
     total_rolls = all_user_rolls.count()
-
-    favorite_preset_query = all_user_rolls.values('seed_type') \
-        .annotate(roll_count=Count('seed_type')) \
-        .order_by('-roll_count') \
-        .first()
-    
+    favorite_preset_query = all_user_rolls.values('seed_type').annotate(roll_count=Count('seed_type')).order_by('-roll_count').first()
     favorite_preset = favorite_preset_query if favorite_preset_query else "N/A"
     
-    # --- Robust Sorting Logic ---
-    def parse_timestamp(roll):
-        """
-        Tries to parse a timestamp string. If it fails, returns a
-        fallback date (datetime.min) to sort it as the oldest.
-        """
-        try:
-            return datetime.strptime(roll.timestamp, '%b %d %Y %H:%M:%S')
-        except (ValueError, TypeError):
-            return datetime.min
-
+    # ... (Sorting logic for recent_rolls is unchanged) ...
     all_rolls_list = list(all_user_rolls)
-    
-    # Use the robust parser as the key for sorting
-    sorted_rolls = sorted(
-        all_rolls_list,
-        key=parse_timestamp,
-        reverse=True
-    )
-    
+    try:
+        sorted_rolls = sorted(
+            all_rolls_list,
+            key=lambda roll: datetime.strptime(roll.timestamp, '%b %d %Y %H:%M:%S'),
+            reverse=True
+        )
+    except ValueError:
+        sorted_rolls = all_rolls_list
     recent_rolls = sorted_rolls[:10]
 
+    # --- My Presets List (existing logic) ---
     sort_key = request.GET.get('sort', 'name')
     order_by_field = SORT_OPTIONS.get(sort_key, 'preset_name')
     query = request.GET.get('q')
@@ -178,6 +168,10 @@ def my_presets_view(request):
     if query:
         user_presets = user_presets.filter(Q(preset_name__icontains=query) | Q(description__icontains=query))
     user_presets = user_presets.order_by(order_by_field)
+
+    # --- ADDED: Get silly things for the template ---
+    silly_things = get_silly_things_list()
+    silly_things_json = json.dumps(silly_things)
     
     context = {
         'presets': user_presets,
@@ -187,6 +181,9 @@ def my_presets_view(request):
         'total_rolls': total_rolls,
         'favorite_preset': favorite_preset,
         'recent_rolls': recent_rolls,
+        # --- ADDED: Missing context variables ---
+        'is_race_admin': is_race_admin,
+        'silly_things_json': silly_things_json,
     }
     return render(request, 'presets/my_presets.html', context)
 
