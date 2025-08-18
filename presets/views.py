@@ -257,7 +257,7 @@ def roll_seed_dispatcher_view(request, pk):
     
     local_roll_args = {
         'practice', 'doors', 'dungeoncrawl', 'doorslite', 'maps', 
-        'mapx', 'lg1', 'lg2', 'ws', 'csi'
+        'mapx', 'lg1', 'lg2', 'ws', 'csi', 'tunes', 'ctunes'
     }
     
     discord_account = request.user.socialaccount_set.get(provider='discord')
@@ -301,7 +301,7 @@ def roll_seed_dispatcher_view(request, pk):
                 'timestamp': timestamp,
             }
             write_to_gsheets(metrics_data)
-            
+
             return JsonResponse({'method': 'api', 'seed_url': seed_url})
         except requests.exceptions.RequestException as e:
             error_message = "The FF6WC API returned an error. Please check your flags."
@@ -310,15 +310,26 @@ def roll_seed_dispatcher_view(request, pk):
 
 def get_local_seed_roll_status_view(request, task_id):
     """
-    Checks the status of a Celery task and returns the result if complete.
+    Checks the status of a Celery task and returns the result,
+    including custom progress states.
     """
     task_result = AsyncResult(task_id)
-    result = {
+    response_data = {
         'task_id': task_id,
         'status': task_result.status,
-        'result': task_result.result if task_result.successful() else str(task_result.result)
+        'result': None
     }
-    return JsonResponse(result)
+
+    if task_result.state == 'SUCCESS':
+        response_data['result'] = task_result.result
+    elif task_result.state == 'FAILURE':
+        # task_result.info is the exception, which is more descriptive
+        response_data['result'] = str(task_result.info)
+    elif task_result.state == 'PROGRESS':
+        # task_result.info is the 'meta' dictionary we passed
+        response_data['result'] = task_result.info.get('status', 'Processing...')
+    
+    return JsonResponse(response_data)
 
 
 @discord_login_required

@@ -113,8 +113,9 @@
                             header.innerText = 'An Error Occurred';
                             content.innerHTML = `<p>Could not generate seed.</p><p><small>${data.result || 'Unknown error.'}</small></p>`;
                             footer.style.display = 'block';
-                        }
-                    })
+                        } else if (data.status === 'PROGRESS') {
+                            header.innerText = data.result; // e.g., "Applying Tunes..."
+                        }                    })
                     .catch(error => {
                         clearInterval(interval);
                         console.error('Error polling task status:', error);

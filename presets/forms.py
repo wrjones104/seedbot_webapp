@@ -19,12 +19,13 @@ ARGUMENT_CHOICES = [
     ('practice', 'Practice'), ('dev', 'Dev'), ('dungeoncrawl', 'Dungeon Crawl'),
     ('doorslite', 'Doors Lite'), ('maps', 'Maps'), ('mapx', 'Map-X'), ('ap', 'AP'),
     ('apts', 'APTS'), ('flagsonly', 'Flags Only'), ('steve', 'Steve'), ('zozo', 'Zozo'),
-    ('desc', 'Desc'), ('lg1', 'LG1'), ('lg2', 'LG2'), ('ws', 'WS'), ('csi', 'CSI')
+    ('desc', 'Desc'), ('lg1', 'LG1'), ('lg2', 'LG2'), ('ws', 'WS'), ('csi', 'CSI'),
+    ('tunes', 'Tunes'), ('ctunes', 'Chaotic Tunes')
 ]
 
 LOCAL_ROLL_ARGS = {
     'practice', 'doors', 'dungeoncrawl', 'doorslite', 'maps', 
-    'mapx', 'lg1', 'lg2', 'ws', 'csi'
+    'mapx', 'lg1', 'lg2', 'ws', 'csi', 'tunes', 'ctunes'
 }
 
 DIR_MAP = {
@@ -75,7 +76,6 @@ class PresetForm(forms.ModelForm):
         wc_script = script_dir / 'wc.py'
         input_smc = main_wc_dir / 'ff3.smc'
         
-        # Use a temporary filename for validation
         temp_filename = f"validation_{uuid.uuid4().hex[:8]}.smc"
         temp_output_smc = main_wc_dir / 'seeds' / temp_filename
 
@@ -91,7 +91,6 @@ class PresetForm(forms.ModelForm):
             error_details = e.stderr or e.stdout
             self.add_error('flags', f"Invalid Flags (local validation): {error_details}")
         finally:
-            # Clean up temporary files
             temp_output_smc.unlink(missing_ok=True)
             temp_output_smc.with_suffix('.txt').unlink(missing_ok=True)
 
@@ -128,7 +127,6 @@ class PresetForm(forms.ModelForm):
             return cleaned_data
 
         if flags:
-            # Decide which validation method to use
             if any(arg in LOCAL_ROLL_ARGS for arg in arguments):
                 self._validate_flags_locally(flags, arguments)
             else:
@@ -138,14 +136,5 @@ class PresetForm(forms.ModelForm):
 
     class Meta:
         model = Preset
-        fields = [
-            'preset_name', 
-            'flags', 
-            'description', 
-            'arguments', 
-            'official', 
-            'hidden'
-        ]
-        labels = {
-            'hidden': 'Hide Flags (for mystery seeds)',
-        }
+        fields = ['preset_name','flags','description','arguments','official','hidden']
+        labels = {'hidden': 'Hide Flags (for mystery seeds)',}
