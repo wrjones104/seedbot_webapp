@@ -1,6 +1,7 @@
 import requests 
 import json     
 import pygsheets
+import logging
 from datetime import datetime
 from django.conf import settings 
 from django.shortcuts import render, get_object_or_404, redirect
@@ -16,6 +17,7 @@ from .models import Preset, UserPermission, FeaturedPreset, SeedLog
 from .forms import PresetForm
 from .decorators import discord_login_required
 from .tasks import create_local_seed_task
+from .utils import write_to_gsheets
 
 # --- Constants ---
 SORT_OPTIONS = {
@@ -34,7 +36,6 @@ def get_silly_things_list():
             lines = [line.strip() for line in f if line.strip()]
         return lines
     except FileNotFoundError:
-        print("silly_things_for_seedbot_to_say.txt not found.")
         return ["Let's find some treasure!"]
 
 def user_is_official(user_id):
@@ -68,7 +69,6 @@ def write_to_gsheets(metrics_data):
             metrics_data.get('channel_name', 'N/A'), metrics_data.get('channel_id', 'N/A'),
         ]
         wks.append_table(values=values_to_insert, start='A1', end=None, dimension='ROWS', overwrite=False)
-        print("Successfully wrote to Google Sheet.")
     except Exception as e:
         print(f'Unable to write to gsheets because of:\n{e}')
 
@@ -77,12 +77,19 @@ def write_to_gsheets(metrics_data):
 def preset_list_view(request):
     sort_key = request.GET.get('sort', DEFAULT_SORT)
     order_by_field = SORT_OPTIONS.get(sort_key, DEFAULT_SORT)
+    
     featured_preset_pks = list(FeaturedPreset.objects.values_list('preset_name', flat=True))
     featured_presets = Preset.objects.filter(pk__in=featured_preset_pks).order_by(order_by_field)
     queryset = Preset.objects.exclude(pk__in=featured_preset_pks).exclude(preset_name='').order_by(order_by_field)
+    
     query = request.GET.get('q')
     if query:
-        queryset = queryset.filter(Q(preset_name__icontains=query) | Q(description__icontains=query) | Q(creator_name__icontains=query))
+        queryset = queryset.filter(
+            Q(preset_name__icontains=query) |
+            Q(description__icontains=query) |
+            Q(creator_name__icontains=query)
+        )
+        
     is_race_admin = False
     user_discord_id = None
     if request.user.is_authenticated:
@@ -92,9 +99,19 @@ def preset_list_view(request):
             is_race_admin = user_is_race_admin(user_discord_id)
         except (SocialAccount.DoesNotExist):
             pass
+
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
-    context = {'featured_presets': featured_presets, 'presets': queryset, 'search_query': query if query else '', 'user_discord_id': user_discord_id, 'silly_things_json': silly_things_json, 'current_sort': sort_key, 'is_race_admin': is_race_admin, }
+
+    context = {
+        'featured_presets': featured_presets,
+        'presets': queryset,
+        'search_query': query if query else '',
+        'user_discord_id': user_discord_id,
+        'silly_things_json': silly_things_json,
+        'current_sort': sort_key,
+        'is_race_admin': is_race_admin, 
+    }
     return render(request, 'presets/preset_list.html', context)
 
 def preset_detail_view(request, pk):
@@ -107,9 +124,17 @@ def preset_detail_view(request, pk):
                 is_owner = True
         except SocialAccount.DoesNotExist:
             pass
+
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
-    context = {'preset': preset, 'is_owner': is_owner, 'silly_things_json': silly_things_json, }
+    back_url = request.META.get('HTTP_REFERER', '/')
+
+    context = {
+        'preset': preset,
+        'is_owner': is_owner,
+        'silly_things_json': silly_things_json,
+        'back_url': back_url,
+    }
     return render(request, 'presets/preset_detail.html', context)
 
 @discord_login_required
@@ -117,16 +142,22 @@ def my_presets_view(request):
     discord_account = request.user.socialaccount_set.get(provider='discord')
     discord_id_int = int(discord_account.uid)
     is_race_admin = user_is_race_admin(discord_id_int)
+
     all_user_rolls = SeedLog.objects.filter(creator_id=discord_id_int)
     total_rolls = all_user_rolls.count()
     favorite_preset_query = all_user_rolls.values('seed_type').annotate(roll_count=Count('seed_type')).order_by('-roll_count').first()
     favorite_preset = favorite_preset_query if favorite_preset_query else "N/A"
+    
+    def parse_timestamp(roll):
+        try:
+            return datetime.strptime(roll.timestamp, '%b %d %Y %H:%M:%S')
+        except (ValueError, TypeError):
+            return datetime.min
+
     all_rolls_list = list(all_user_rolls)
-    try:
-        sorted_rolls = sorted(all_rolls_list, key=lambda roll: datetime.strptime(roll.timestamp, '%b %d %Y %H:%M:%S'), reverse=True)
-    except ValueError:
-        sorted_rolls = all_rolls_list
+    sorted_rolls = sorted(all_rolls_list, key=parse_timestamp, reverse=True)
     recent_rolls = sorted_rolls[:10]
+
     sort_key = request.GET.get('sort', 'name')
     order_by_field = SORT_OPTIONS.get(sort_key, 'preset_name')
     query = request.GET.get('q')
@@ -134,9 +165,21 @@ def my_presets_view(request):
     if query:
         user_presets = user_presets.filter(Q(preset_name__icontains=query) | Q(description__icontains=query))
     user_presets = user_presets.order_by(order_by_field)
+    
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
-    context = {'presets': user_presets, 'current_sort': sort_key, 'search_query': query if query else '', 'user_discord_id': discord_id_int, 'total_rolls': total_rolls, 'favorite_preset': favorite_preset, 'recent_rolls': recent_rolls, 'is_race_admin': is_race_admin, 'silly_things_json': silly_things_json, }
+    
+    context = {
+        'presets': user_presets,
+        'current_sort': sort_key,
+        'search_query': query if query else '',
+        'user_discord_id': discord_id_int,
+        'total_rolls': total_rolls,
+        'favorite_preset': favorite_preset,
+        'recent_rolls': recent_rolls,
+        'is_race_admin': is_race_admin,
+        'silly_things_json': silly_things_json,
+    }
     return render(request, 'presets/my_presets.html', context)
 
 @discord_login_required 
@@ -154,7 +197,6 @@ def preset_create_view(request):
     else:
         form = PresetForm(is_official=is_official)
     
-    # Add silly_things_json to the context
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
     context = {'form': form, 'preset': None, 'silly_things_json': silly_things_json}
@@ -175,7 +217,6 @@ def preset_update_view(request, pk):
     else:
         form = PresetForm(instance=preset, is_official=is_official)
 
-    # Add silly_things_json to the context
     silly_things = get_silly_things_list()
     silly_things_json = json.dumps(silly_things)
     context = {'form': form, 'preset': preset, 'silly_things_json': silly_things_json}
@@ -190,7 +231,10 @@ def preset_delete_view(request, pk):
     if request.method == 'POST':
         preset.delete()
         return redirect('my-presets')
-    context = {'preset': preset}
+
+    silly_things = get_silly_things_list()
+    silly_things_json = json.dumps(silly_things)
+    context = {'preset': preset, 'silly_things_json': silly_things_json}
     return render(request, 'presets/preset_confirm_delete.html', context)
 
 # --- API / AJAX Views ---
@@ -231,30 +275,23 @@ def roll_seed_dispatcher_view(request, pk):
 
             timestamp = datetime.now().strftime('%b %d %Y %H:%M:%S')
 
-
             SeedLog.objects.create(
-                creator_id=discord_id,
-                creator_name=discord_name,
-                seed_type=preset.preset_name,
-                share_url=seed_url,
-                timestamp=datetime.now().strftime('%b %d %Y %H:%M:%S'),
-                server_name='WebApp'
+                creator_id=discord_id, creator_name=discord_name,
+                seed_type=preset.preset_name, share_url=seed_url,
+                timestamp=timestamp, server_name='WebApp'
             )
-
+            
             metrics_data = {
-                'creator_id': discord_id,
-                'creator_name': discord_name,
-                'seed_type': preset.preset_name,
-                'share_url': seed_url,
+                'creator_id': discord_id, 'creator_name': discord_name,
+                'seed_type': preset.preset_name, 'share_url': seed_url,
                 'timestamp': timestamp,
             }
             write_to_gsheets(metrics_data)
-
+            
             return JsonResponse({'method': 'api', 'seed_url': seed_url})
         except requests.exceptions.RequestException as e:
             error_message = "The FF6WC API returned an error. Please check your flags."
             return JsonResponse({'error': error_message}, status=400)
-
 
 def get_local_seed_roll_status_view(request, task_id):
     """
@@ -271,14 +308,11 @@ def get_local_seed_roll_status_view(request, task_id):
     if task_result.state == 'SUCCESS':
         response_data['result'] = task_result.result
     elif task_result.state == 'FAILURE':
-        # task_result.info is the exception, which is more descriptive
         response_data['result'] = str(task_result.info)
     elif task_result.state == 'PROGRESS':
-        # task_result.info is the 'meta' dictionary we passed
         response_data['result'] = task_result.info.get('status', 'Processing...')
     
     return JsonResponse(response_data)
-
 
 @discord_login_required
 def toggle_feature_view(request, pk):
