@@ -15,7 +15,7 @@ ENV_TYPE = os.getenv('ENVIRONMENT', 'dev')
 # --- Environment-Specific Settings ---
 if ENV_TYPE == "prod":
     DEBUG = False
-    ALLOWED_HOSTS = ['seedbot.net', 'www.seedbot.net']
+    ALLOWED_HOSTS = ['seedbot.net', 'www.seedbot.net', '34.172.69.171']
     CSRF_TRUSTED_ORIGINS = ['https://seedbot.net', 'https://www.seedbot.net']
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
@@ -104,7 +104,7 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
-# MEDIA_ROOT is now defined in the environment-specific section above
+# MEDIA_ROOT is defined in the environment-specific section above
 
 
 # --- Django-Allauth & Sites Framework ---
@@ -121,7 +121,27 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 SOCIALACCOUNT_AUTO_SIGNUP = True
-
 ACCOUNT_EMAIL_VERIFICATION = "none"
-
 SOCIALACCOUNT_LOGIN_ON_GET = True
+ACCOUNT_LOGOUT_ON_GET = True
+
+
+# --- DETAILED LOGGING CONFIGURATION ---
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': '/var/log/django/django_debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}

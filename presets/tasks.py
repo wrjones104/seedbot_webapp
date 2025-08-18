@@ -4,8 +4,6 @@ import os
 import zipfile
 from pathlib import Path
 from datetime import datetime
-import sys
-import asyncio
 import tempfile
 import shutil
 import traceback
@@ -17,11 +15,7 @@ from .models import Preset, SeedLog
 from . import flag_processor
 from .utils import write_to_gsheets
 
-# The sys.path hack is no longer needed and can be removed.
-
-# This is now the simple, correct way to import, thanks to your fix.
-from johnnydmad import johnnydmad_webapp
-
+# NOTE: All complex sys.path and johnnydmad imports have been removed for stability.
 
 class RollException(Exception):
     """Custom exception for seed rolling errors."""
@@ -84,7 +78,7 @@ def create_local_seed_task(self, preset_pk, user_id, user_name):
             if 'tunes' in args_list or 'ctunes' in args_list:
                 self.update_state(state='PROGRESS', meta={'status': 'Applying Tunes...'})
                 music_was_randomized = True
-                music_log_path = temp_path / f"{filename_base}_spoiler.txt"
+                music_log_path = temp_path / f"{filename_base}_music.txt"
                 
                 if 'ctunes' in args_list:
                     jdm_type = "chaos"
