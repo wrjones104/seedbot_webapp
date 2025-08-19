@@ -28,6 +28,8 @@ class UserFavorite(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        managed = False
+        db_table = 'user_favorites'
         unique_together = ('user', 'preset')
 
     def __str__(self):
@@ -49,6 +51,10 @@ class UserPermission(models.Model):
 class FeaturedPreset(models.Model):
     preset_name = models.CharField(max_length=255, primary_key=True)
     featured_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed = False
+        db_table = 'featured_presets'
 
     def __str__(self):
         return self.preset_name

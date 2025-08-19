@@ -1,7 +1,7 @@
 class SeedBotRouter:
     def _is_presets_app_model(self, model_name):
         # All models related to the app's core data
-        return model_name in ['preset', 'userpermission', 'seedlog', 'featurepreset']
+        return model_name in ['preset', 'userpermission', 'seedlog', 'featuredpreset', 'userfavorite']
 
     def db_for_read(self, model, **hints):
         if model._meta.app_label == 'presets':
