@@ -13,7 +13,7 @@ from celery.result import AsyncResult
 import os
 
 from . import flag_processor
-from .models import Preset, UserPermission, FeaturedPreset, SeedLog
+from .models import Preset, UserPermission, FeaturedPreset, SeedLog, UserFavorite
 from .forms import PresetForm
 from .decorators import discord_login_required
 from .tasks import create_local_seed_task
@@ -80,7 +80,15 @@ def preset_list_view(request):
     
     featured_preset_pks = list(FeaturedPreset.objects.values_list('preset_name', flat=True))
     featured_presets = Preset.objects.filter(pk__in=featured_preset_pks).order_by(order_by_field)
-    queryset = Preset.objects.exclude(pk__in=featured_preset_pks).exclude(preset_name='').order_by(order_by_field)
+
+    favorited_presets = []
+    favorited_preset_pks = []
+    if request.user.is_authenticated:
+        favorited_preset_pks = list(UserFavorite.objects.filter(user=request.user).values_list('preset__preset_name', flat=True))
+        favorited_presets = Preset.objects.filter(pk__in=favorited_preset_pks).order_by(order_by_field)
+
+    exclude_pks = featured_preset_pks + favorited_preset_pks
+    queryset = Preset.objects.exclude(pk__in=exclude_pks).exclude(preset_name='').order_by(order_by_field)
     
     query = request.GET.get('q')
     if query:
@@ -105,12 +113,14 @@ def preset_list_view(request):
 
     context = {
         'featured_presets': featured_presets,
+        'favorited_presets': favorited_presets,
         'presets': queryset,
         'search_query': query if query else '',
         'user_discord_id': user_discord_id,
         'silly_things_json': silly_things_json,
         'current_sort': sort_key,
-        'is_race_admin': is_race_admin, 
+        'is_race_admin': is_race_admin,
+        'favorited_preset_pks': favorited_preset_pks,
     }
     return render(request, 'presets/preset_list.html', context)
 
@@ -330,3 +340,17 @@ def toggle_feature_view(request, pk):
     else:
         featured_obj.delete()
         return JsonResponse({'status': 'success', 'featured': False})
+
+@discord_login_required
+def toggle_favorite_view(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+    preset = get_object_or_404(Preset, pk=pk)
+    favorite_obj, created = UserFavorite.objects.get_or_create(user=request.user, preset=preset)
+
+    if created:
+        return JsonResponse({'status': 'success', 'favorited': True})
+    else:
+        favorite_obj.delete()
+        return JsonResponse({'status': 'success', 'favorited': False})

@@ -16,7 +16,16 @@
         {% endfor %}
     </div>
 
-    <hr id="featured-hr" {% if not featured_presets %}style="display: none;"{% endif %}>
+    <h2 class="favorites-header" id="favorites-header" {% if not favorited_presets %}style="display: none;"{% endif %}>My Favorites</h2>
+
+    <div class="card-grid" id="favorites-grid">
+        {% for preset in favorited_presets %}
+            {% include "presets/_preset_card.html" %}
+        {% endfor %}
+    </div>
+
+    <hr id="presets-hr" {% if not favorited_presets and not featured_presets %}style="display: none;"{% endif %}>
+
     <form method="get" class="filter-bar">
         <input 
             type="search" 

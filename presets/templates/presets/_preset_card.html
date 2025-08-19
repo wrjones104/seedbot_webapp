@@ -1,14 +1,23 @@
 <article data-pk="{{ preset.pk }}">
     <header>
-        {% if is_race_admin %}
-            <button 
-                class="contrast outline secondary js-feature-btn" 
-                data-url="{% url 'toggle-feature' preset.pk %}"
-                aria-label="Toggle Featured"
-                style="float: right; padding: 0.25rem 0.5rem; line-height: 1;">
-                📌
-            </button>
-        {% endif %}
+        {% if user.is_authenticated %}
+        <button
+            class="contrast outline secondary js-favorite-btn {% if preset.pk in favorited_preset_pks %}favorited{% endif %}"
+            data-url="{% url 'toggle-favorite' preset.pk %}"
+            aria-label="Toggle Favorite"
+            style="float: right; padding: 0.25rem 0.5rem; line-height: 1; margin-left: 0.5rem;">
+            ❤
+        </button>
+    {% endif %}
+    {% if is_race_admin %}
+        <button
+            class="contrast outline secondary js-feature-btn"
+            data-url="{% url 'toggle-feature' preset.pk %}"
+            aria-label="Toggle Featured"
+            style="float: right; padding: 0.25rem 0.5rem; line-height: 1;">
+            📌
+        </button>
+    {% endif %}
         <strong><a href="{% url 'preset-detail' preset.pk %}">{{ preset.preset_name }}</a></strong>
         <br><small>By: {{ preset.creator_name }}</small>
     </header>

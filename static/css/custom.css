@@ -134,3 +134,15 @@ article dl dt {
 .js-feature-btn:hover {
   opacity: 1;
 }
+
+.js-favorite-btn {
+  border: none !important;
+  background: transparent !important;
+  opacity: 0.5;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.js-favorite-btn:hover,
+.js-favorite-btn.favorited {
+  opacity: 1;
+}

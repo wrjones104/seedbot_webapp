@@ -13,6 +13,7 @@ urlpatterns = [
     path('<path:pk>/update/', views.preset_update_view, name='preset-update'),
     path('<path:pk>/delete/', views.preset_delete_view, name='preset-delete'),
     path('<path:pk>/toggle-feature/', views.toggle_feature_view, name='toggle-feature'),
+    path('<path:pk>/toggle-favorite/', views.toggle_favorite_view, name='toggle-favorite'),
     
     # This is now the single endpoint for all seed rolling
     path('<path:pk>/roll/', views.roll_seed_dispatcher_view, name='roll-seed'),
