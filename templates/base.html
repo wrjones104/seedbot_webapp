@@ -126,16 +126,29 @@
             }, 3000);
         }
 
-        function checkFeaturedVisibility() {
+        function checkSectionVisibility() {
             const featuredGrid = $('#featured-grid');
             const featuredHeader = $('#featured-header');
-            const featuredHr = $('#featured-hr');
+            const favoriteGrid = $('#favorites-grid');
+            const favoriteHeader = $('#favorites-header');
+            const presetsHr = $('#presets-hr');
+
             if (featuredGrid.children('article').length > 0) {
                 featuredHeader.show();
-                featuredHr.show();
             } else {
                 featuredHeader.hide();
-                featuredHr.hide();
+            }
+
+            if (favoriteGrid.children('article').length > 0) {
+                favoriteHeader.show();
+            } else {
+                favoriteHeader.hide();
+            }
+
+            if (featuredGrid.children('article').length > 0 || favoriteGrid.children('article').length > 0) {
+                presetsHr.show();
+            } else {
+                presetsHr.hide();
             }
         }
 
@@ -214,19 +227,50 @@
                             card.fadeOut(200, function() {
                                 $('#featured-grid').prepend(card);
                                 card.fadeIn(200);
-                                checkFeaturedVisibility();
+                                checkSectionVisibility();
                             });
                         } else {
                             card.fadeOut(200, function() {
                                 $('#regular-grid').prepend(card);
                                 card.fadeIn(200);
-                                checkFeaturedVisibility();
+                                checkSectionVisibility();
                             });
                         }
                     }
                 });
             });
-            checkFeaturedVisibility();
+
+            $(document).on('click', '.js-favorite-btn', function() {
+                const button = $(this);
+                const favoriteUrl = button.data('url');
+                const card = button.closest('article');
+                const csrfToken = $('[name=csrfmiddlewaretoken]').val();
+
+                fetch(favoriteUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        button.toggleClass('favorited');
+                        if (data.favorited) {
+                            card.fadeOut(200, function() {
+                                $('#favorites-grid').prepend(card);
+                                card.fadeIn(200);
+                                checkSectionVisibility();
+                            });
+                        } else {
+                            card.fadeOut(200, function() {
+                                $('#regular-grid').prepend(card);
+                                card.fadeIn(200);
+                                checkSectionVisibility();
+                            });
+                        }
+                    }
+                });
+            });
+            checkSectionVisibility();
         });
     </script>
     {% block scripts %}{% endblock %}
